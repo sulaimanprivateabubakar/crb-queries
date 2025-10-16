@@ -1,0 +1,60 @@
+ --total companies--
+select count(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where ah.deleted is null and c.deleted is null; 
+
+--deleted companies--
+select COUNT(*) as TOTAL from companies c
+inner join account_holders as ah on ah.account_holder_id = c.account_holder_id
+where c.deleted between '2025-08-01' and '2025-08-17'
+and c.deleted is not null  
+and ah.deleted is not null; 
+
+--unique companies --
+select COUNT(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count (inr.account_holder_id) from companies inr
+inner join account_holders ah2 on ah2.account_holder_id = inr.account_holder_id 
+where inr.company_name = c.company_name
+and inr.deleted is null
+and ah2.deleted is null) = 1
+and c.deleted is null 
+and ah.deleted is null;
+
+-- duplicated companies --
+select COUNT(*) 
+from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count (inr.account_holder_id) from companies inr
+inner join account_holders ah2 on ah2.account_holder_id = inr.account_holder_id 
+where inr.company_name = c.company_name
+and inr.deleted is null
+and ah2.deleted is null) > 1
+and c.deleted is null 
+and ah.deleted is null;
+
+-- companies merged--
+select company_name, count(*), array_agg(ah.account_number) from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null and ah.deleted is null
+group by c.company_name    
+having count(c.company_name) > 1
+
+-- companies merged2--
+select count(*) from merges m
+where date(m.created) BETWEEN '2025-08-01' and '2025-08-17'
+and m.source_account_number like '%CDC%'
+and m.rollback_date is null;
+
+--total creditlines--
+select count(*) from credit_lines cl 
+where deleted is null
+and lock_status_id = 0;  
+
+--total creditlines2--
+select count(*) from credit_lines cl 
+where deleted is null
+and created_at BETWEEN '2024-09-08' AND '2024-09-09 23:59:59' 
+and lock_status_id = 0
+
+
