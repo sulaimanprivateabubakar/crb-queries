@@ -1,0 +1,44 @@
+SELECT 
+    ip.policy_number,
+    MAX(co.company_name) AS company_name,
+    MAX(co.mra_tpin) AS mra_tpin,
+    MAX(co.registration_number) AS registration_number,
+    MAX(co.registration_date) AS registration_date,
+    MAX(co.contact_person_name) AS contact_person_name,
+    MAX(co.contact_person_phone_number) AS contact_person_phone_number,
+    MAX(ah.email) AS email,
+    MAX(ah.mobile) AS mobile,
+    MAX(ah.postal_address) AS postal_address,
+    MAX(ah.physical_address) AS physical_address,
+    MAX(ah.physical_address_district) AS physical_address_district,
+    MAX(ah.plot_number) AS plot_number,
+    MAX(ip.branch_code) AS branch_code,
+    MAX(ip.sum_insured) AS sum_insured,
+    MAX(ip.start_date) AS policy_start,
+    MAX(ip.maturity_date) AS maturity_date,
+    MAX(pc.policy_class) AS policy_class,
+    MAX(ps.policy_status) AS policy_status,
+    MAX(ip.status_date) AS status_date,
+    MAX(ip.premium) AS premium,
+    MAX(ip.total_premium_paid) AS total_premium_paid,
+    MAX(ip.outstanding_premium) AS outstanding_premium,
+    MAX(ip.premium_in_arrears) AS premium_in_arrears,
+    MAX(ip.days_in_arrears) AS days_in_arrears,
+    MAX(ip.installment_in_arrears) AS installment_in_arrears,
+    MAX(ip.payoff_termination_date) AS payoff_termination_date,
+    MAX(ip.reason_for_closure) AS reason_for_closure,
+    MAX(ip.last_payment_date) AS last_payment_date,
+    MAX(ip.last_payment_amount) AS last_payment_amount
+FROM insurance_policies ip 
+    INNER JOIN account_holders ah ON ah.account_holder_id = ip.account_holder_id 
+    INNER JOIN companies co ON co.account_holder_id = ip.account_holder_id 
+    INNER JOIN policy_classes pc ON pc.id = ip.policy_class_id 
+    INNER JOIN policy_statuses ps ON ps.id = ip.policy_status_id 
+WHERE ip.policy_status_id  in ('66','3')
+  AND ip.status_date between '2018-01-01' and '2024-12-31'
+  AND ip.insurer_id  = 2230453
+  AND ip.lock_status_id = 0
+    AND ip.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND co.deleted IS NULL
+GROUP BY ip.policy_number;
