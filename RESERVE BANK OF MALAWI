@@ -1,0 +1,62 @@
+RESERVR BANK OF MALAWI
+---For All individuals---
+SELECT COUNT(*)
+FROM individuals i
+JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM individuals i2 
+    JOIN account_holders ah2 ON ah2.account_holder_id = i2.account_holder_id 
+    WHERE i.first_name = i2.first_name 
+      AND i.last_name = i2.last_name 
+      AND i.date_of_birth = i2.date_of_birth 
+      AND i2.created < '2025-01-01'  -- check for any earlier duplicates
+      AND (i2.deleted IS NULL OR i2.deleted >= '2025-01-01') -- still active or deleted after Jan
+      AND (ah2.deleted IS NULL OR ah2.deleted >= '2025-01-01')
+)
+AND i.created BETWEEN '2025-01-01' AND '2025-06-30'
+AND i.deleted IS NULL
+AND ah.deleted IS NULL;
+
+
+
+---For females---
+SELECT COUNT(*)
+FROM individuals i
+JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+WHERE i.sex = 'FEMALE'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM individuals i2 
+    JOIN account_holders ah2 ON ah2.account_holder_id = i2.account_holder_id 
+    WHERE i.first_name = i2.first_name 
+      AND i.last_name = i2.last_name 
+      AND i.date_of_birth = i2.date_of_birth 
+      AND i2.created < '2025-01-01'
+      AND (i2.deleted IS NULL OR i2.deleted >= '2025-01-01')
+      AND (ah2.deleted IS NULL OR ah2.deleted >= '2025-01-01')
+)
+AND i.created BETWEEN '2025-01-01' AND '2025-06-30'
+AND i.deleted IS NULL
+AND ah.deleted IS NULL;
+
+
+---FOR SME''s--
+SELECT COUNT(*)
+FROM companies c 
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+INNER JOIN company_types c2 ON c2.company_type_id = c.company_sector_id
+WHERE c2.company_type_id IN (1, 2, 12, 13)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM companies c_prev 
+      INNER JOIN account_holders ah_prev ON ah_prev.account_holder_id = c_prev.account_holder_id 
+      WHERE c.company_name = c_prev.company_name 
+        AND c_prev.created < '2025-06-01'
+        AND (c_prev.deleted IS NULL OR c_prev.deleted >= '2025-06-01')
+        AND (ah_prev.deleted IS NULL OR ah_prev.deleted >= '2025-06-01')
+  )
+  AND c.created BETWEEN '2025-06-01' AND '2025-06-30'
+  AND c.deleted IS NULL
+  AND ah.deleted IS NULL;
+
