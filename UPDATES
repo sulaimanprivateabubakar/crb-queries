@@ -1,0 +1,35 @@
+SELECT
+    ah2.name,
+    COUNT(*) AS total_current_performing_with_history,
+    SUM(CASE
+        WHEN cl.account_status_date >= '2025-04-01'
+             AND cl.account_status_date < '2025-05-01'
+        THEN 1 ELSE 0
+    END) AS april_2025_count
+FROM
+    account_holders ah
+INNER JOIN
+    individuals i ON i.account_holder_id = ah.account_holder_id
+INNER JOIN
+    credit_lines cl ON cl.account_holder_id = i.account_holder_id AND cl.deleted IS NULL
+INNER JOIN
+    account_holders ah2 ON ah2.account_holder_id = cl.creditor_id
+INNER JOIN
+    credit_line_statuses cls ON cls.credit_line_status_id = cl.status_id
+WHERE
+    ah.deleted IS NULL
+    AND i.deleted IS NULL
+    AND cl.approved_amount NOT IN ('-1','0','1')
+    AND cl.principal_amount NOT IN ('-1','0','1')
+    AND cl.created_at >= '2025-04-01'::date
+    AND cl.created_at < '2025-05-01'::date
+    AND EXISTS (
+        SELECT 1
+        FROM credit_lines cl2
+        WHERE cl2.account_reference_no = cl.account_reference_no
+        AND cl2.created_at < '2025-04-01'::date
+    )
+GROUP BY
+    ah2.name
+ORDER BY
+    total_current_performing_with_history DESC;
