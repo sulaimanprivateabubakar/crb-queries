@@ -1,0 +1,40 @@
+##INDIVIDUAL AND COMPANY MERGES##
+
+SELECT
+    m.action_by,
+    u.fullname,
+    u.department,
+    SUM(CASE WHEN m.source_account_number LIKE 'CDI%' THEN 1 ELSE 0 END) AS individual_merges,
+    SUM(CASE WHEN m.source_account_number LIKE 'CDC%' THEN 1 ELSE 0 END) AS company_merges,
+    SUM(COUNT(*)) OVER () AS overall_total_merges
+FROM
+    merges m
+INNER JOIN
+    users u ON u.username = m.action_by
+WHERE
+     u.username = 'suspenses'
+GROUP BY
+    m.action_by,
+    u.department,
+    u.fullname;
+
+
+----individual with all liabilitie---
+    SELECT DISTINCT ah.account_number, 
+       i.first_name, 
+       i.last_name 
+FROM individuals i
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+INNER JOIN credit_lines c ON i.account_holder_id = c.account_holder_id
+INNER JOIN insurance_policies ip ON ip.account_holder_id = i.account_holder_id
+INNER JOIN utilities u ON i.account_holder_id = u.account_holder_id
+INNER JOIN employment_histories eh ON i.account_holder_id = eh.account_holder_id
+INNER JOIN credit_lines cl  ON i.account_holder_id = cl.account_holder_id
+WHERE i.deleted IS NULL 
+  AND c.deleted IS NULL 
+  AND ip.deleted IS NULL 
+  AND u.deleted IS NULL 
+  AND eh.deleted IS NULL 
+  AND cl.deleted IS null
+  and ah.deleted is null;
+
