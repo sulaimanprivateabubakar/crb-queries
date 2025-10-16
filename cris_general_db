@@ -1,0 +1,774 @@
+## FOR MONTHLY REPORT ##
+--new and added companies and individuals ##
+-- total individual added--
+-- total individual added--
+select 'Fresh Record' as label , count(*) as Count from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+where i.created between '2025-06-01' and '2025-06-30'
+and i.deleted is null
+and ah.account_holder_type = 'Individual';
+
+--counts new individuals in the database--
+SELECT COUNT(*) as new_individual_count
+FROM individuals i
+INNER JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM individuals i2 
+    INNER JOIN account_holders ah2 ON ah2.account_holder_id = i2.account_holder_id 
+    WHERE i.first_name = i2.first_name 
+      AND i.last_name = i2.last_name 
+      AND i.date_of_birth = i2.date_of_birth 
+      AND i2.created < '2025-09-01'  -- Existed before September
+      AND (i2.deleted IS NULL OR i2.deleted >= '2025-09-30')
+      AND (ah2.deleted IS NULL OR ah2.deleted >= '2025-09-30')
+)
+AND i.created BETWEEN '2025-09-01' AND '2025-09-30'
+AND (i.deleted IS NULL OR i.deleted > '2025-09-30')
+AND (ah.deleted IS NULL OR ah.deleted > '2025-09-30')
+
+--total companies added--
+select 'Fresh Record Companies' as label , count(*) as Count from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where ah.created between '2025-06-01' and '2025-06-30'
+and c.deleted is null
+and account_holder_type = 'Company';
+
+--counts new companies in the database--
+SELECT company_name, c.created, * 
+FROM companies c 
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+where not EXISTS
+    (SELECT *
+     FROM companies c2 
+     inner join account_holders ah2 on ah2.account_holder_id = c2.account_holder_id 
+     WHERE c.company_name = c2.company_name 
+     and c2.deleted < '2025-06-30' and ah2.deleted < '2025-06-30'
+    and c.created < '2025-06-30'
+    )
+and c.created between '2025-06-01' and '2025-06-30'
+and c.deleted is null and ah.deleted is null;
+-- no records ##
+-- OVERALL COUNT OF NO RECORDS --
+select ah.account_number, i.first_name,  i.last_name, c.company_name from audits a 
+inner join account_holders ah on ah.account_holder_id = a.entity_id::integer
+left join individuals i on i.account_holder_id = ah.account_holder_id 
+left join companies c on c.account_holder_id = ah.account_holder_id 
+where "event" = 'CREATE' 
+and a.source_id like 'CRIS-Autobot%'
+and  (model = 'Individuals' or model like '%Com%')
+and i.deleted is null and c.deleted is null and ah.deleted is null; 
+
+-- no records in sectors --
+select count(o.account_number), c.industry from reporting.orders o
+inner join reporting.clients c on c.id = o.client_id 
+where o.account_number in ()
+and o.created_at between '2024-03-01' and '2024-03-31 23:59:59'
+and o.status = 'CLOSED'
+group by c.industry ;
+
+-- Merges ##
+--TOTAL MERGES --
+select count(*) from merges m
+where date(m.created) = '2024-04-08' 
+and m.source_account_number like '%CD%';
+
+--MERGES SHOWING WHO MERGED --
+select action_by, count(*) from merges m
+where created between '2023-03-01 13:00:00' and '2023-03-01 13:10:00'
+order by action_by;
+
+-- for weekly merges--
+select m.action_by, u.fullname, u.department, count(*) from merges m
+inner join users u on u.username = m.action_by 
+where created between '2024-03-04' and '2024-03-08 23:59:59'
+group by m.action_by, u.department, u.fullname;
+
+--MERGES WEEKDAYS AND WEEKENDS--
+select sum(case when created between '2024-04-01' and '2024-04-05 23:59:59' THEN 1 ELSE 0 END) as week1,
+       sum(case when created between '2024-04-06' and '2024-04-07 23:59:59' THEN 1 ELSE 0 END) as weeknd1,
+       sum(case when created between '2024-04-08' and '2024-04-12 23:59:59' THEN 1 ELSE 0 END) as week2,
+       sum(case when created between '2024-04-13' and '2024-04-14 23:59:59' THEN 1 ELSE 0 END) as weeknd2,
+       sum(case when created between '2024-04-15' and '2024-04-19 23:59:59' THEN 1 ELSE 0 END) as week3,
+       sum(case when created between '2024-04-20' and '2024-04-21 23:59:59' THEN 1 ELSE 0 END) as weeknd3,
+       sum(case when created between '2024-04-22' and '2024-04-26 23:59:59' THEN 1 ELSE 0 END) as week4,
+       sum(case when created between '2024-04-27' and '2024-04-28 23:59:59' THEN 1 ELSE 0 END) as weeknd4,
+       sum(case when created between '2024-04-29' and '2024-04-30 23:59:59' THEN 1 ELSE 0 END) as week5
+from merges
+       where created between '2024-04-01' and '2024-04-30 23:59:59';
+
+## DELETED INDIVDUALS AND COMPANIES ##
+--MONTHLY DELETED INDIVIDUALS--
+select sum(case when c.deleted between '2024-07-01' and '2024-07-05 23:59:59' THEN 1 ELSE 0 END) as week1,
+       sum(case when c.deleted between '2024-07-06' and '2024-07-07 23:59:59' THEN 1 ELSE 0 END) as weeknd1,
+       sum(case when c.deleted between '2024-07-08' and '2024-07-12 23:59:59' THEN 1 ELSE 0 END) as week2,
+       sum(case when c.deleted between '2024-07-13' and '2024-07-14 23:59:59' THEN 1 ELSE 0 END) as weeknd2,
+       sum(case when c.deleted between '2024-07-15' and '2024-07-19 23:59:59' THEN 1 ELSE 0 END) as week3,
+       sum(case when c.deleted between '2024-07-20' and '2024-07-21 23:59:59' THEN 1 ELSE 0 END) as weeknd3,
+       sum(case when c.deleted between '2024-07-22' and '2024-07-26 23:59:59' THEN 1 ELSE 0 END) as week4,
+       sum(case when c.deleted between '2024-07-27' and '2024-07-28 23:59:59' THEN 1 ELSE 0 END) as weeknd4,
+       sum(case when c.deleted between '2024-07-29' and '2024-07-31 23:59:59' THEN 1 ELSE 0 END) as week5
+from individuals c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted between '2024-07-01' and '2024-07-31 23:59:59'
+and ah.deleted between '2024-07-01' and '2023-07-31 23:59:59';
+
+--MONTHLY DELETED COMPANIES--
+select sum(case when c.deleted between '2023-11-01' and '2023-11-03 23:59:59' THEN 1 ELSE 0 END) as week1,
+       sum(case when c.deleted between '2023-11-04' and '2023-11-05 23:59:59' THEN 1 ELSE 0 END) as weeknd1,
+       sum(case when c.deleted between '2023-11-06' and '2023-11-10 23:59:59' THEN 1 ELSE 0 END) as week2,
+       sum(case when c.deleted between '2023-11-11' and '2023-11-12 23:59:59' THEN 1 ELSE 0 END) as weeknd2,
+       sum(case when c.deleted between '2023-11-13' and '2023-11-17 23:59:59' THEN 1 ELSE 0 END) as week3,
+       sum(case when c.deleted between '2023-11-18' and '2023-11-19 23:59:59' THEN 1 ELSE 0 END) as weeknd3,
+       sum(case when c.deleted between '2023-11-20' and '2023-11-24 23:59:59' THEN 1 ELSE 0 END) as week4,
+       sum(case when c.deleted between '2023-11-25' and '2023-11-26 23:59:59' THEN 1 ELSE 0 END) as weeknd4,
+       sum(case when c.deleted between '2023-11-27' and '2023-11-30 23:59:59' THEN 1 ELSE 0 END) as week5
+from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted between '2023-11-01' and '2023-11-30 23:59:59'
+and ah.deleted between '2023-11-01' and '2023-11-30 23:59:59';
+
+-- FOR DATA QUALITY MONITORING GO TO DBEAVER, CRB DBADMIN THEN DATA QUALITY MONITORING SCRIPT ##
+
+-- query for duplicates ##
+SELECT 
+    i.first_name, 
+    i.last_name, 
+    i.date_of_birth, 
+    a.mobile,
+    COUNT(*) as duplicate_count
+FROM 
+    individuals i
+JOIN 
+    account_holders a ON i.account_holder_id = a.account_holder_id
+WHERE
+    i.deleted IS NULL
+GROUP BY 
+    i.first_name, 
+    i.last_name, 
+    i.date_of_birth, 
+    a.mobile
+HAVING 
+    COUNT(*) > 100
+ORDER BY 
+    duplicate_count DESC, 
+    i.first_name, 
+    i.last_name;
+   
+   WITH duplicates AS (
+    SELECT 
+        i.account_holder_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY i.first_name, i.last_name, i.date_of_birth, a.mobile 
+            ORDER BY i.modified DESC
+        ) AS rn,
+        COUNT(*) OVER (
+            PARTITION BY i.first_name, i.last_name, i.date_of_birth, a.mobile
+        ) AS duplicate_count
+    FROM 
+        individuals i
+    JOIN 
+        account_holders a ON i.account_holder_id = a.account_holder_id
+    WHERE 
+        i.deleted IS NULL
+)
+UPDATE 
+    individuals
+SET 
+    deleted = now()
+WHERE 
+    account_holder_id IN (
+        SELECT account_holder_id
+        FROM duplicates
+        WHERE rn > 1 AND duplicate_count >= 100
+    )
+AND 
+    deleted IS NULL;
+
+
+-- Max Duplicates ##
+--counts duplicated insurance policies--
+SELECT 
+    c.policy_number,
+    COUNT(*) AS policy_count,
+    ARRAY_AGG(c.account_holder_id) AS account_holders
+FROM 
+    insurance_policies c
+WHERE 
+    c.deleted IS NULL
+GROUP BY 
+    c.policy_number
+HAVING 
+    COUNT(*) > 1;
+
+--counts duplicated insurance policies(2)--
+SELECT 
+    c.policy_number,
+    c.account_holder_id,
+    COUNT(*) AS occurrence_count,
+    ARRAY_AGG(c.account_holder_id) AS duplicate_account_holders
+FROM 
+    insurance_policies c
+WHERE 
+    c.deleted IS NULL
+GROUP BY 
+    c.policy_number, c.account_holder_id
+HAVING 
+    COUNT(*) > 1;
+
+
+--individual duplicates
+select concat(first_name, ' ', last_name), count(*), array_agg(ah.account_number) 
+from individuals c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count(inr.account_holder_id) from individuals inr
+where inr.first_name = c.last_name 
+and inr.date_of_birth = c.date_of_birth
+and inr.deleted is null) > 100
+and c.deleted is null and ah.deleted is null
+group by first_name, last_name
+limit 150; 
+
+--company duplicates
+select company_name, account_number from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count(inr.company_name) from companies inr
+where inr.company_name = c.company_name) > 1
+and c.deleted is NULL
+
+---DUPLICATED ID''s---
+SELECT 
+    id.id_number, 
+    COUNT(*) AS duplicate_count, 
+    ARRAY_AGG(id.id_number) AS document_ids
+FROM 
+    identification_documents id
+INNER JOIN 
+    individuals i 
+    ON i.account_holder_id = id.account_holder_id
+WHERE 
+    id.identification_type_id = 8
+    AND id.created < '2024-11-30 23:59:59'
+    AND id.deleted IS NULL
+    AND i.deleted IS NULL
+GROUP BY 
+    id.id_number
+HAVING 
+    COUNT(*) > 1;
+
+
+## OTHERS##
+--for Ruth --
+SELECT e.id, e.created from enquiries e
+left join reports r on r.enquiry_id = e.id
+where e.status ='CLOSED'
+and r.enquiry_id is NULL
+and e.created BETWEEN '2024-06-17' and '2024-06-20 23:59:59';
+
+ --id''s--
+ -- identifying instances where id is not verified ---
+ SELECT
+    _id_.id_number,
+    _ah_.account_number,
+    UPPER(CONCAT(_i_.first_name, ' ', _i_.last_name)),
+    _id_.deleted,
+    --_id_.is_valid,--
+    _ah_.is_verified
+  FROM
+    identification_documents _id_
+  INNER JOIN
+    account_holders _ah_ ON _ah_.account_holder_id = _id_.account_holder_id
+  INNER JOIN
+    individuals _i_ ON _i_.account_holder_id = _ah_.account_holder_id
+  where_id.id_number  IN ('2320200', '237742')
+   _id_.deleted IS NULL
+    AND _ah_.is_verified IS NOT TRUE;
+
+ ---- deletions ----
+ UPDATE identification_documents _id_
+SET deleted = CURRENT_TIMESTAMP
+FROM (
+  SELECT
+    _id_.id_number,
+    _ah_.account_number,
+    UPPER(CONCAT(_i_.first_name, ' ', _i_.last_name)),
+    _id_.deleted,
+    --_id_.is_valid,--
+    _ah_.is_verified
+  FROM
+    identification_documents _id_
+  INNER JOIN
+    account_holders _ah_ ON _ah_.account_holder_id = _id_.account_holder_id
+  INNER JOIN
+    individuals _i_ ON _i_.account_holder_id = _ah_.account_holder_id
+  where
+    _id.id_number  IN ('2320200', '237742')
+     and _id_.deleted IS NULL
+    AND _ah_.is_verified IS NOT TRUE
+  LIMIT 10
+) AS subquery
+WHERE _id_.id_number = subquery.id_number;
+
+--COUNTING VERIFIED IDs--
+SELECT COUNT(*) AS number_of_verified_ids
+FROM identification_documents _id_
+INNER JOIN account_holders _ah_ ON _ah_.account_holder_id = _id_.account_holder_id
+INNER JOIN individuals _i_ ON _i_.account_holder_id = _ah_.account_holder_id
+WHERE _id_.deleted IS NULL AND _ah_.is_verified = TRUE;
+
+-- enqueries with no reports --
+SELECT e.id, e.created from enquiries e
+left join reports r on r.enquiry_id = e.id
+where e.status ='CLOSED'
+and r.enquiry_id is NULL
+and e.created BETWEEN '2024-06-18' and '2024-06-19 23:59:59';
+
+
+--details MZ--
+SELECT i.last_name, i.first_name, i.middle_name, i.sex, i.date_of_birth, 
+       i.marital_status, i.profession, ah.telephone, i.home_village, 
+       ah.postal_address, c.company_name
+FROM individuals i
+INNER JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+INNER JOIN identification_documents id ON id.account_holder_id = ah.account_holder_id
+INNER JOIN credit_lines cl ON cl.account_holder_id = ah.account_holder_id  -- Corrected Join
+INNER JOIN companies c ON c.account_holder_id = ah.account_holder_id
+WHERE ah.deleted IS NULL
+  AND c.deleted IS NULL
+  AND id.deleted IS NULL
+-- Option 1: Filter by company name (more flexible)
+-- AND c.company_name LIKE '%MICROLOAN FOUNDATION%'
+-- Option 2: No filter for company name (returns all companies)
+-- ;
+
+--shared Ref numbers --
+SELECT COUNT(*) AS account_reference_numbers
+FROM (
+  SELECT cl.account_reference_no
+  FROM credit_lines cl
+  INNER JOIN account_holders ah ON ah.account_holder_id = cl.account_holder_id
+  WHERE ah.deleted IS NULL AND cl.deleted IS NULL
+) AS reference_counts;
+
+
+
+--cora active users exept crb users--
+SELECT cu.*, u.*, c.*
+FROM client_users cu
+INNER JOIN users u ON u.user_id = cu.user_id
+INNER JOIN clients c ON c.client_id = cu.client_id
+WHERE u.is_active = 1
+AND c.client_id != 4;
+
+
+
+---DATA PROVIDER VOLUME FILES--
+SELECT p.name AS provider_name, 
+       SUM(u.total_volume) AS total_volume
+FROM upload u
+INNER JOIN provider p ON p.id = u.provider_id
+WHERE u.created_on BETWEEN '2024-10-01' AND '2024-10-31 23:59:59'
+GROUP BY p.name;
+
+
+ --DATA PROVIDERS VOLUMES--
+SELECT dp.organisation_name AS provider_name, 
+       SUM(df.count_entities_loaded) AS total_volume
+FROM data_files df 
+INNER JOIN data_providers dp ON dp.id = df.data_provider_id
+WHERE df.created_at BETWEEN '2025-02-01' AND '2025-02-28 23:59:59'
+GROUP BY dp.organisation_name;
+
+WITH RankedData AS (
+    SELECT 
+        df.data_provider_id,
+        dp.organisation_name AS provider_name,
+        df.count_entities_loaded,
+        LAG(df.count_entities_loaded) OVER (
+            PARTITION BY df.data_provider_id 
+            ORDER BY df.created_at
+        ) AS prev_rejected
+    FROM data_files df
+    INNER JOIN data_providers dp ON dp.id = df.data_provider_id
+    WHERE df.created_at BETWEEN '2025-02-01' AND '2025-02-28 23:59:59'
+),
+FilteredData AS (
+    SELECT 
+        data_provider_id, 
+        provider_name, 
+        count_entities_loaded
+    FROM RankedData
+    WHERE count_entities_loaded <> prev_rejected OR prev_rejected IS NULL
+)
+SELECT 
+    provider_name, 
+    SUM(count_entities_loaded) AS total_rejected
+FROM FilteredData
+GROUP BY provider_name;
+
+
+
+---TOTAL VOLUME FILES--
+WITH RankedData AS (
+    SELECT 
+        df.count_entities_loaded,
+        LAG(df.count_entities_loaded) OVER (
+            ORDER BY df.created_at
+        ) AS prev_loaded
+    FROM data_files df
+    WHERE df.created_at BETWEEN '2025-02-01' AND '2025-02-28 23:59:59'
+),
+FilteredData AS (
+    SELECT 
+        count_entities_loaded
+    FROM RankedData
+    WHERE count_entities_loaded <> prev_loaded OR prev_loaded IS NULL
+)
+SELECT SUM(count_entities_loaded) AS total_volume
+FROM FilteredData;
+
+
+
+
+---INDIVIDUAL FILES--
+select count(*) from data_files df 
+WHERE df.created_at BETWEEN '2025-02-01' AND '2025-02-28 23:59:59'
+and df.template_type like 'INDIVIDUAL%';
+
+
+---DUPLICATED IDs---
+SELECT id.id_number, COUNT(*) AS duplicate_count
+FROM identification_documents id
+INNER JOIN individuals i ON i.account_holder_id = id.account_holder_id
+WHERE id.identification_type_id = 8
+  AND id.created < '2024-10-01 23:59:59'
+  AND id.deleted IS NULL
+  AND i.deleted IS NULL
+GROUP BY id.id_number
+HAVING COUNT(*) > 1;
+
+
+
+
+---DATA UPDATES---
+SELECT
+    ah2.name,
+    COUNT(*) AS total_current_performing_with_history,
+    SUM(CASE
+        WHEN cl.account_status_date >= '2025-04-01'
+             AND cl.account_status_date < '2025-05-01'
+        THEN 1 ELSE 0
+    END) AS may_2025_count
+FROM
+    account_holders ah
+INNER JOIN
+    individuals i ON i.account_holder_id = ah.account_holder_id
+INNER JOIN
+    credit_lines cl ON cl.account_holder_id = i.account_holder_id AND cl.deleted IS NULL
+INNER JOIN
+    account_holders ah2 ON ah2.account_holder_id = cl.creditor_id
+INNER JOIN
+    credit_line_statuses cls ON cls.credit_line_status_id = cl.status_id
+WHERE
+    ah.deleted IS NULL
+    AND i.deleted IS NULL
+    AND cl.approved_amount NOT IN ('-1','0','1')
+    AND cl.principal_amount NOT IN ('-1','0','1')
+    AND cl.created_at >= '2025-05-01'::date
+    AND cl.created_at < '2025-06-01'::date
+    AND EXISTS (
+        SELECT 1
+        FROM credit_lines cl2
+        WHERE cl2.account_reference_no = cl.account_reference_no
+        AND cl2.created_at < '2025-06-01'::date
+    )
+GROUP BY
+    ah2.name
+ORDER BY
+    total_current_performing_with_history DESC;
+
+
+
+ --individual duplicates
+WITH IndividualCounts AS (
+    SELECT first_name, date_of_birth, COUNT(DISTINCT account_holder_id) AS count
+    FROM individuals
+    WHERE deleted IS NULL
+    GROUP BY first_name, date_of_birth
+    HAVING COUNT(DISTINCT account_holder_id) > 1
+)
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+    c.date_of_birth,
+    COUNT(DISTINCT ah.account_holder_id) AS distinct_account_holder_count,
+    ARRAY_AGG(DISTINCT ah.account_number) AS distinct_account_numbers
+FROM 
+    IndividualCounts ic
+INNER JOIN 
+    individuals c 
+    ON ic.first_name = c.first_name AND ic.date_of_birth = c.date_of_birth
+INNER JOIN 
+    account_holders ah 
+    ON ah.account_holder_id = c.account_holder_id
+WHERE 
+    c.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND c.first_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND c.last_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND LENGTH(c.first_name) > 3
+    AND LENGTH(c.last_name) > 3
+GROUP BY 
+    c.first_name, c.last_name, c.date_of_birth 
+
+
+
+---MAX Duplicated individuals for NBS(2)---
+WITH IndividualCounts AS (
+    SELECT first_name, date_of_birth, COUNT(DISTINCT account_holder_id) AS count
+    FROM individuals
+    WHERE deleted IS NULL
+    GROUP BY first_name, date_of_birth
+    HAVING COUNT(DISTINCT account_holder_id) > 1
+)
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+    c.date_of_birth,
+    COUNT(DISTINCT ah.account_holder_id) AS distinct_account_holder_count,
+    ARRAY_AGG(DISTINCT ah.account_number) AS distinct_account_numbers
+FROM 
+    IndividualCounts ic
+INNER JOIN 
+    individuals c 
+    ON ic.first_name = c.first_name AND ic.date_of_birth = c.date_of_birth
+INNER JOIN 
+    account_holders ah 
+    ON ah.account_holder_id = c.account_holder_id
+INNER JOIN 
+    credit_lines cl 
+    ON cl.account_holder_id = c.account_holder_id
+WHERE 
+    cl.creditor_id = 2234
+    and c.deleted IS NULL 
+    and cl.deleted is null
+    AND ah.deleted IS NULL 
+    AND c.first_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND c.last_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND LENGTH(c.first_name) > 3
+    AND LENGTH(c.last_name) > 3
+GROUP BY 
+    c.first_name, c.last_name, c.date_of_birth 
+    
+
+
+
+--EDITING REFERENCE NUMBERS
+update credit_lines 
+set creditor_id ='19938592'
+where account_reference_no in ('504MF22220320002',
+'910MF22220420005',
+'510MF88211960001',
+'801MFMG21236F1YG',
+'909MF22221510001',
+'801MFMG21236D4H1',
+'910MF22222220004')
+and creditor_id ='19934243'
+
+
+--LOCKED LIABILITIES OF INSTITUTIONS--
+select count(*), cl.creditor_id
+from credit_lines cl 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+where cl.lock_status_id in (1,2,12,13)
+and cl.deleted is null
+and ah.deleted is null
+group by (cl.creditor_id);
+
+---VERIFIED INDIVIDUALS--
+select count(*) from account_holders ah 
+where ah.is_verified is true 
+and ah.deleted is null 
+and ah.account_holder_type ='Individual'
+
+---VERIFIED ID''s--
+select * from identification_documents id  
+inner join account_holders ah on ah.account_holder_id = id.account_holder_id 
+where ah.account_holder_type ='Individual'
+and id.is_valid is true
+and ah.deleted is null 
+and id.deleted is null
+
+
+--SACCO AND MICROFINANCE DATA PROVIDERS--
+select count(*) from provider p 
+where p.sector_name = 'MICROFINANCE'
+or p.sector_name = 'Financial Services'
+and p.deleted is null;
+
+
+
+SELECT p.name AS provider_name, 
+       SUM(u.total_volume) AS total_volume
+FROM upload u
+INNER JOIN provider p ON p.id = u.provider_id
+and p.sector_name = 'MICROFINANCE'
+or p.sector_name = 'Financial Services'
+and p.deleted is null
+GROUP BY p.name;
+
+
+SELECT 'All Providers' AS provider_name, 
+       SUM(u.total_volume) AS total_volume
+FROM upload u
+INNER JOIN provider p ON p.id = u.provider_id
+WHERE p.sector_name = 'COOPERATIVES'
+AND p.deleted IS NULL;
+
+
+---DELETING WAL FILES---
+ls -l /mnt/disk-0/data/postgres/pg_wal/ | grep -E 'Oct 11'
+ pg_archivecleanup -n /mnt/disk-0/data/postgres/pg_wal/ | grep 000000010000017B0000005B
+ pg_archivecleanup -d /mnt/disk-0/data/postgres/pg_wal/ 000000010000017B0000005B
+
+---CHECK SIZE OF DATABASE---
+SELECT pg_size_pretty(pg_database_size(current_database())) AS database_size;
+
+---CHECK SIZE OF CORA DATABASE---
+SELECT table_schema AS "Database", 
+       ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS "Size (MB)"
+FROM information_schema.tables
+WHERE table_schema = 'creditc_cora'
+GROUP BY table_schema;
+
+---DATA UPDATES---
+SELECT
+    ah2.name,
+    COUNT(*) as total_current_performing,
+    SUM(CASE
+        WHEN cl.account_status_date >= '2025-01-01'
+        AND cl.account_status_date < '2025-02-01'
+        THEN 1
+        ELSE 0
+    END) as january_2025_count
+FROM
+    account_holders ah
+INNER JOIN
+    companies c ON c.account_holder_id = ah.account_holder_id
+INNER JOIN
+    credit_lines cl ON cl.account_holder_id = c.account_holder_id AND cl.deleted IS NULL
+INNER JOIN
+    account_holders ah2 ON ah2.account_holder_id = cl.creditor_id
+INNER JOIN
+    credit_line_statuses cls ON cls.credit_line_status_id = cl.status_id
+WHERE
+    ah.deleted IS NULL
+    AND c.deleted IS NULL
+    AND cls.credit_line_status = 'Current / Performing'
+    AND cl.approved_amount NOT IN ('-1','0','1')
+    AND cl.principal_amount NOT IN ('-1','0','1')
+GROUP BY
+    ah2.name
+ORDER BY
+    total_current_performing DESC;
+
+
+
+---TERMINATE CONNECTIONS--
+--shows the query times and a glimpse of what the query is
+SELECT pid, age(clock_timestamp(), query_start), usename, query 
+FROM pg_stat_activity;
+WHERE query != '<IDLE>' AND query NOT ILIKE '%pg_stat_activity%' 
+ORDER BY query_start desc;
+
+--this is the query for checking idle connections, some might not be necessarily idle but theyre still transacting
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+WHERE datname = 'credit_data_crb'
+AND pid <> pg_backend_pid()
+AND state in ('idle');
+
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+FROM pg_stat_activity
+WHERE pid in (164201,
+164204,
+164243,
+164246,
+164264,
+164268,
+164290,
+164294);
+
+
+
+
+
+---DELETING NO RECORDS---
+-- Step 1: Update individuals
+UPDATE individuals i
+SET deleted = NOW()
+FROM audits a
+INNER JOIN account_holders ah ON ah.account_holder_id = a.entity_id::integer
+LEFT JOIN companies c ON c.account_holder_id = ah.account_holder_id
+WHERE i.account_holder_id = ah.account_holder_id
+  AND a.event = 'CREATE'
+  AND a.source_id LIKE 'CRIS-Autobot%'
+  AND (a.model = 'Individuals' OR a.model LIKE '%Com%')
+  AND i.deleted IS NULL AND c.deleted IS NULL AND ah.deleted IS NULL;
+
+-- Step 2: Update companies
+UPDATE companies c
+SET deleted = NOW()
+FROM audits a
+INNER JOIN account_holders ah ON ah.account_holder_id = a.entity_id::integer
+LEFT JOIN individuals i ON i.account_holder_id = ah.account_holder_id
+WHERE c.account_holder_id = ah.account_holder_id
+  AND a.event = 'CREATE'
+  AND a.source_id LIKE 'CRIS-Autobot%'
+  AND (a.model = 'Individuals' OR a.model LIKE '%Com%')
+  AND i.deleted IS NULL AND c.deleted IS NULL AND ah.deleted IS NULL;
+
+-- Step 3: Update account_holders
+UPDATE account_holders ah
+SET deleted = NOW()
+FROM audits a
+LEFT JOIN individuals i ON i.account_holder_id = a.entity_id::integer
+LEFT JOIN companies c ON c.account_holder_id = a.entity_id::integer
+WHERE ah.account_holder_id = a.entity_id::integer
+  AND a.event = 'CREATE'
+  AND a.source_id LIKE 'CRIS-Autobot%'
+  AND (a.model = 'Individuals' OR a.model LIKE '%Com%')
+  AND i.deleted IS NULL AND c.deleted IS NULL AND ah.deleted IS NULL;
+
+
+
+
+
+---RBM DATA---
+WITH normalized_individuals AS (
+    SELECT 
+        CONCAT(
+            UPPER(
+                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                    CONCAT(first_name, last_name),
+                    ' ', ''), '.', ''), ',', ''), '1', ''), '0', ''), '2', ''), '9', ''), '-','')
+            ),
+            date_of_birth
+        ) AS normalized_key,
+        UPPER(sex) AS sex
+    FROM individuals i
+    INNER JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id 
+    WHERE i.deleted IS NULL AND ah.deleted IS NULL
+),
+unique_normalized AS (
+    SELECT 
+        normalized_key,
+        MIN(sex) FILTER (WHERE sex IN ('FEMALE', 'F', 'FAMALE')) AS female_flag,
+        MIN(sex) FILTER (WHERE sex IN ('MALE', 'M')) AS male_flag
+    FROM normalized_individuals
+    GROUP BY normalized_key
+    HAVING COUNT(*) = 1  -- only keep truly unique individuals
+)
+SELECT 
+    COUNT(*) FILTER (WHERE female_flag IS NOT NULL AND male_flag IS NULL) AS unique_female,
+    COUNT(*) FILTER (WHERE male_flag IS NOT NULL AND female_flag IS NULL) AS unique_male,
+    COUNT(*) FILTER (WHERE male_flag IS NOT NULL AND female_flag IS NOT NULL) AS conflicting_sex,
+    COUNT(*) AS total_unique_individuals
+FROM unique_normalized;
