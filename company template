@@ -1,0 +1,67 @@
+--COMPANY TEMPLATE(WITHOUT DUPLICATES)
+   SELECT 
+    co.company_name AS "Business/Entity Name", 
+    MAX(ct.company_type) AS "Type of Business/Entity",
+    MAX(co.mra_tpin) as "TPI no.",
+    MAX(co.registration_number) as "Registration Number",
+    MAX(co.registration_date) AS "Registration Date",
+    MAX(cs.company_status) AS "Business Status",  
+    MAX(cs2.company_sector) AS "Industry", 
+    MAX(co.contact_person_name) as "Contact person",
+    MAX(co.contact_person_phone_number) as "Contact Person Phone Number",
+    MAX(ah.email) as "Email Adderess",
+    MAX(ah.telephone) as "Phone No.",
+    MAX(ah.postal_address) as "Postal/Mailing Address",
+    MAX(ah.physical_address) as "Physical Address",
+    MAX(ah.plot_number) as "Plot No.",
+    MAX(c.branch_id_code) as "Branch Code/Name",
+    MAX(c.account_reference_no) AS "Loan Reference No.",
+    MAX(c.sub_account_reference_no) AS "Old Loan Reference No.", 
+    MAX(c.reporting_currency) AS "Currency", 
+    COALESCE(MAX(NULLIF(c.principal_amount, -1)), 0) AS "Approved Amount",
+    COALESCE(MAX(NULLIF(c.principal_amount_local, -1)), 0) AS "Approved Amount(MWK)", 
+    COALESCE(MAX(NULLIF(c.approved_amount, -1)), 0) AS "Disbursed Amount", 
+    COALESCE(MAX(NULLIF(c.approved_amount_local, -1)), 0) AS "Disbursed Amount (MWK)",  
+    MAX(c.disbursement_date) AS "Disbursement Date",
+    MAX(c.clearing_date) AS "Maturity Date",
+    MAX(pt.property_type) AS "Product Type",
+    MAX(pt2.payment_term) AS "Payment Terms", 
+    MAX(c.collateral_status) AS "Collateral Status",  
+    MAX(c.rbm_class) AS "Reserve Bank Classification", 
+    MAX(cls.credit_line_status) AS "Account Status", 
+    MAX(c.account_status_date) AS "Account Status Change Date",
+    COALESCE(MAX(NULLIF(c.monthly_repayment, -1)), 0) AS "Scheduled Repayment Amount", 
+    COALESCE(MAX(NULLIF(c.monthly_repayment_local, -1)), 0) AS "Scheduled Repayment Amount (MWK)",
+    COALESCE(MAX(NULLIF(c.amount_paid, -1)), 0) AS "Total Amount Paid To Date", 
+    COALESCE(MAX(NULLIF(c.amount_paid_local, -1)), 0) AS "Total Amount Paid To Date (MWK)", 
+    COALESCE(MAX(NULLIF(c.current_balance, -1)), 0) AS "Current Balance", 
+    COALESCE(MAX(NULLIF(c.current_balance_local, -1)), 0) AS "Current Balance (MWK)",
+    COALESCE(MAX(NULLIF(c.available_credit, -1)), 0) AS "Available Credit",
+    COALESCE(MAX(NULLIF(c.available_credit_local, -1)), 0) AS "Available Credit (MWK)", 
+    COALESCE(MAX(NULLIF(c.due_balance_local, -1)), 0) AS "Amount In Arrears (MWK)", 
+    COALESCE(MAX(NULLIF(c.days_in_arrears, -1)), 0) AS "Days In Arrears",  
+    COALESCE(MAX(NULLIF(c.no_of_installments, -1)), 0) AS "No. of Installments In Arrears", 
+    NULL AS default_date, 
+    MAX(c.closed_date) AS "Pay Off/Termination Date",
+    MAX(c.reason_for_closure) AS "Reason For Closure", 
+    MAX(c.first_payment_date) AS "First Payment Date", 
+    MAX(c.last_transaction_date) AS "Last Payment Date", 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount, -1)), 0) AS "Last Payment Amount", 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount_local, -1)), 0) AS "Last Payment Amount (MWK)"
+FROM credit_lines c
+    INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+    INNER JOIN companies co ON co.account_holder_id = c.account_holder_id 
+    INNER JOIN payment_terms pt2 ON pt2.payment_term_id = c.payment_term_id
+    INNER JOIN company_statuses cs ON co.company_status_id = cs.company_status_id 
+    LEFT JOIN property_types pt ON pt.property_type = pt.property_type
+    LEFT JOIN company_sectors cs2 ON co.company_sector_id = cs2.company_sector_id
+    LEFT JOIN credit_line_statuses cls ON c.status_id = cls.credit_line_status_id
+    left join company_types ct on co.company_type_id = ct.company_type_id    
+     where c.creditor_id = 189661
+    and c.status_id in ('53','1')
+    and c.current_balance > 1
+    and c.lock_status_id = 0
+    AND co.deleted IS NULL
+    AND ah.deleted IS NULL 
+    AND c.deleted IS NULL
+GROUP BY co.company_name;
