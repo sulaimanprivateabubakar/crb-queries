@@ -1,0 +1,22 @@
+##CRIS DATABASE##
+----adding user in users table-----
+INSERT INTO reporting.users (id, username, password, full_name, email, created_at, modified_at, deleted)
+VALUES (11, 'liwiro', '_liwiro_password_', 'LIWIRO MICRO-CREDIT LIMITED', 'liwiromicrocreditlimited@mail.com', NOW(), NOW(), NULL);
+
+
+----adding client user in client_user table-----
+---The client for the client user in the reporting schema should have the same account number as the client for the client user in CORA--- 
+INSERT INTO reporting.clients_users (user_id, client_id, contact_id, deleted)
+VALUES (11, 61, null, null);
+
+X
+
+---adding api_key into users_apikeys table----
+INSERT INTO reporting.users_apikeys (id, user_id, apikey , expires_at , created_at, modified_at, deleted)
+VALUES (11, 11,'63aee31d4c7620e3646adb1da6cd0ac898939c488c6e4b13f2d8ae9e4dad5c41', '5050-12-31 00:00:00.000', NOW(), NOW(), NULL);
+
+
+##CORA DATABASE##
+---create user named gateway_(clientname)---
+---The client for this user has to have the same account number as the client the reporting schema---
+---They shuld look at the users e.g gateway_nbs and gateway_microlaon---
