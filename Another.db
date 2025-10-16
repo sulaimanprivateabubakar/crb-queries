@@ -1,0 +1,138 @@
+  SELECT DISTINCT 
+    ah.telephone AS telephone,
+    ah.email AS email,
+    ah.mobile AS mobile,
+    ah.postal_address AS postalAddress,
+    MAX(CASE WHEN i4.identification_type  ILIKE '%driver%' THEN i3.id_number END) AS driverLicense,
+    MAX(CASE WHEN i4.identification_type ILIKE '%traffic%' THEN i3.id_number END) AS trafficRegistrationNumber,
+    MAX(CASE WHEN i4.identification_type ILIKE '%mec%' THEN i3.id_number END) AS mecRegistration,
+    MAX(CASE WHEN i4.identification_type ILIKE '%passport%' THEN i3.id_number END) AS passport,
+    MAX(CASE WHEN i4.identification_type ILIKE '%national%' THEN i3.id_number END) AS nationalId,
+    i.first_name AS firstName,
+    i.last_name AS lastName,
+    i.middle_name AS middleName,
+    i.sex AS sex,
+    i.date_of_birth AS dob,
+    i.marital_status AS maritalStatus,
+    i.profession AS profession,
+    '' AS phone,
+    i.home_village   AS village
+FROM insurance_policies i2
+INNER JOIN account_holders ah 
+    ON ah.account_holder_id = i2.account_holder_id
+INNER JOIN individuals i 
+    ON i.account_holder_id = ah.account_holder_id
+INNER JOIN companies c 
+    ON c.account_holder_id = i2.insurer_id 
+INNER JOIN identification_documents i3 
+    ON i3.account_holder_id = i2.account_holder_id
+LEFT JOIN identification_types i4 
+    ON i4.identification_type_id = i3.identification_type_id
+WHERE ah.is_verified = TRUE
+  AND i2.insurer_id = 603
+  AND i.deleted IS NULL 
+  AND ah.deleted IS NULL 
+  AND i2.deleted IS NULL
+  AND i2.lock_status_id != 11
+GROUP BY 
+    ah.telephone, ah.email, ah.mobile, ah.postal_address,
+    i.first_name, i.last_name, i.middle_name, i.sex, i.date_of_birth, 
+    i.marital_status, i.profession, i.home_village ;
+
+
+
+
+
+
+
+
+
+
+
+    SELECT 
+    MAX(NULLIF(i.title, 'UNKNOWN')) AS salutation, 
+    i.last_name,
+    i.first_name,
+    MAX(NULLIF(i.middle_name, 'UNKNOWN')) AS middle_name, 
+    MAX(NULLIF(i.maiden_name, 'UNKNOWN')) AS maiden_name, 
+    MAX(NULLIF(i.sex, 'UNKNOWN')) AS gender, 
+    MAX(NULLIF(i.marital_status, 'UNKNOWN')) AS marital_status, 
+    COALESCE(MAX(NULLIF(i.no_of_dependents, -1)), 0) AS no_of_dependents, 
+    MAX(NULLIF(i.date_of_birth::TEXT, 'UNKNOWN')::DATE) AS date_of_birth,
+    MAX(NULLIF(id.id_number, 'UNKNOWN')) AS national_id_no, 
+    MAX(NULLIF(it.identification_type, 'UNKNOWN')) AS id_type,
+    MAX(NULLIF(id.id_number, 'UNKNOWN')) AS id_no,
+    MAX(NULLIF(n.nationality, 'UNKNOWN')) AS nationality, 
+    MAX(NULLIF(i.home_village, 'UNKNOWN')) AS village, 
+    MAX(NULLIF(i.home_village_ta, 'UNKNOWN')) AS T_A, 
+    MAX(NULLIF(d.district_name, 'UNKNOWN')) AS home_district, 
+    MAX(NULLIF(i.residence_permit_no, 'UNKNOWN')) AS resident_permit_no, 
+    MAX(NULLIF(ah.mobile, 'UNKNOWN')) AS phone_no, 
+    MAX(NULLIF(ah.postal_address, 'UNKNOWN')) AS postal_address, 
+    MAX(NULLIF(ah.email, 'UNKNOWN')) AS email_address, 
+    MAX(NULLIF(ah.physical_address, 'UNKNOWN')) AS residential_address,
+    MAX(NULLIF(ah.physical_address_district, 'UNKNOWN')) AS residential_district, 
+    MAX(NULLIF(ah.plot_number, 'UNKNOWN')) AS plot_no, 
+    MAX(NULLIF(i.profession, 'UNKNOWN')) AS profession_occupation, 
+    MAX(NULLIF(eh.employer_name, 'UNKNOWN')) AS employer_name, 
+    MAX(NULLIF(eh.employer_postal_address, 'UNKNOWN')) AS employer_address, 
+    MAX(NULLIF(eh.employee_number, 'UNKNOWN')) AS employee_phone_no, 
+    MAX(NULLIF(eh.start_date::TEXT, 'UNKNOWN')::DATE) AS employment_date,
+    MAX(NULLIF(c.branch_id_code, 'UNKNOWN')) AS branch_code_name, 
+    MAX(NULLIF(c.account_reference_no, 'UNKNOWN')) AS loan_reference_no,
+    MAX(NULLIF(c.sub_account_reference_no, 'UNKNOWN')) AS old_loan_reference_no, 
+    MAX(NULLIF(c.reporting_currency, 'UNKNOWN')) AS currency, 
+    COALESCE(MAX(NULLIF(c.principal_amount, -1)), NULL) AS approved_amount,
+    COALESCE(MAX(NULLIF(c.principal_amount_local, -1)), NULL) AS approved_amount_mwk, 
+    COALESCE(MAX(NULLIF(c.approved_amount, -1)), NULL) AS disbursed_amount, 
+    COALESCE(MAX(NULLIF(c.approved_amount_local, -1)), NULL) AS disbursed_amount_mwk, 
+    MAX(NULLIF(c.disbursement_date::TEXT, 'UNKNOWN')::DATE) AS disbursement_date,
+    MAX(NULLIF(c.clearing_date::TEXT, 'UNKNOWN')::DATE) AS maturity_date, 
+    MAX(NULLIF(c.participation_code, 'UNKNOWN')) AS borrower_type, 
+    MAX(NULLIF(c.group_name, 'UNKNOWN')) AS group_name, 
+    MAX(NULLIF(c.group_number, 'UNKNOWN')) AS group_no, 
+    MAX(NULLIF(pt.payment_term, 'UNKNOWN')) AS payment_terms, 
+    MAX(NULLIF(c.rbm_class, 'UNKNOWN')) AS rbm_classification,
+    MAX(NULLIF(cls.credit_line_status, 'UNKNOWN')) AS account_status,  
+    MAX(NULLIF(c.account_status_date::TEXT, 'UNKNOWN')::DATE) AS account_status_change_date, 
+    COALESCE(MAX(NULLIF(c.monthly_repayment, -1)), NULL) AS scheduled_repayment_amount, 
+    COALESCE(MAX(NULLIF(c.monthly_repayment_local, -1)), NULL) AS scheduled_repayment_amount_mwk, 
+    COALESCE(MAX(NULLIF(c.amount_paid, -1)), NULL) AS total_amount_paid_to_date, 
+    COALESCE(MAX(NULLIF(c.amount_paid_local, -1)), NULL) AS total_amount_paid_to_date_mwk, 
+    COALESCE(MAX(NULLIF(c.current_balance, -1)), NULL) AS current_balance, 
+    COALESCE(MAX(NULLIF(c.current_balance_local, -1)), NULL) AS current_balance_mwk,
+    COALESCE(MAX(NULLIF(c.available_credit, -1)), NULL) AS available_credit, 
+    COALESCE(MAX(NULLIF(c.available_credit_local, -1)), NULL) AS available_credit_mwk, 
+    COALESCE(MAX(NULLIF(c.due_balance, -1)), NULL) AS amount_in_arrears, 
+    COALESCE(MAX(NULLIF(c.due_balance_local, -1)), NULL) AS amount_in_arrears_mwk, 
+    COALESCE(MAX(NULLIF(c.days_in_arrears, -1)), NULL) AS days_in_arrears, 
+    COALESCE(MAX(NULLIF(c.installments_in_arrears, -1)), NULL) AS no_of_installments_in_arrears, 
+    MAX(NULLIF(c.collateral_type, 'UNKNOWN')) AS collateral_type, 
+    NULL AS default_date, 
+    MAX(NULLIF(c.closed_date::TEXT, 'UNKNOWN')::DATE) AS pay_off_termination_date, 
+    MAX(NULLIF(c.reason_for_closure, 'UNKNOWN')) AS reason_for_closure, 
+    MAX(NULLIF(c.first_payment_date::TEXT, 'UNKNOWN')::DATE) AS first_payment_date,
+    MAX(NULLIF(c.last_transaction_date::TEXT, 'UNKNOWN')::DATE) AS last_payment_date, 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount, -1)), NULL) AS last_payment_amount, 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount_local, -1)), NULL) AS last_payment_amount_mwk 
+FROM 
+    credit_lines c
+    INNER JOIN account_holders ah ON c.account_holder_id = ah.account_holder_id
+    INNER JOIN individuals i ON ah.account_holder_id = i.account_holder_id
+    INNER JOIN account_types at ON c.account_type_id = at.id
+    INNER JOIN payment_terms pt ON c.payment_term_id = pt.payment_term_id
+    INNER JOIN credit_line_statuses cls ON c.status_id = cls.credit_line_status_id
+    INNER JOIN identification_documents id ON id.account_holder_id = i.account_holder_id 
+    INNER JOIN identification_types it ON it.identification_type_id = id.identification_type_id 
+    INNER JOIN nationalities n ON n.nationality_id = i.nationality_id 
+    INNER JOIN districts d ON d.id = i.district_id 
+    INNER JOIN employment_histories eh ON eh.account_holder_id = i.account_holder_id 
+    WHERE   c.creditor_id = 1218
+    and LENGTH(c.account_reference_no) BETWEEN 1 AND 5
+    and c.created_at between '2024-01-01' and '2024-02-28'
+    and c.status_id != 68
+    and c.lock_status_id != 11
+    AND i.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND c.deleted IS NULL
+  GROUP BY i.last_name, i.first_name;
