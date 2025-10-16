@@ -1,0 +1,56 @@
+SELECT 
+    ip.policy_number, 
+    MAX(i.title) as salutation, 
+    MAX(i.last_name) as surname, 
+    MAX(i.first_name) as first_name, 
+    MAX(i.middle_name) as middle_name, 
+    MAX(i.maiden_name) as maiden_name, 
+    MAX(i.sex) as gender, 
+    MAX(i.marital_status) as marital_status, 
+    MAX(i.date_of_birth) as date_of_birth, 
+    MAX(id.id_number) as nationalID, 
+    MAX(it.identification_type) as identification_type,
+    MAX(n.nationality) as nationality, 
+    MAX(i.home_village) as home_village, 
+    MAX(i.home_village_ta) as home_village_ta, 
+    MAX(d.district_name) as district_name, 
+    MAX(i.residence_permit_no) as residence_permit_no, 
+    MAX(ah.mobile) as phone_number, 
+    MAX(ah.postal_address) as postal_address, 
+    MAX(ah.email) as email, 
+    MAX(ah.physical_address) as residential_address, 
+    MAX(ip.branch_code) as branch_code, 
+    MAX(ip.sum_insured) as sum_insured, 
+    MAX(ip.start_date) as policy_start, 
+    MAX(ip.maturity_date) as maturity_date, 
+    MAX(pc.policy_class) as policy_class, 
+    MAX(ps.policy_status) as policy_status, 
+    MAX(ip.status_date) as status_date, 
+    MAX(ip.premium) as premium, 
+    MAX(ip.total_premium_paid) as total_premium_paid, 
+    MAX(ip.outstanding_premium) as outstanding_premium, 
+    MAX(ip.premium_in_arrears) as premium_in_arrears, 
+    MAX(ip.days_in_arrears) as days_in_arrears, 
+    MAX(ip.installment_in_arrears) as installment_in_arrears, 
+    MAX(ip.payoff_termination_date) as payoff_termination_date, 
+    MAX(ip.reason_for_closure) as reason_for_closure, 
+    MAX(ip.last_payment_date) as last_payment_date, 
+    MAX(ip.last_payment_amount) as last_payment_amount
+FROM insurance_policies ip 
+    INNER JOIN policy_classes pc ON pc.id = ip.policy_class_id 
+    INNER JOIN policy_statuses ps ON ps.id = ip.policy_status_id 
+    INNER JOIN account_holders ah ON ah.account_holder_id = ip.account_holder_id 
+    INNER JOIN individuals i ON ah.account_holder_id = i.account_holder_id
+    INNER JOIN identification_documents id ON id.account_holder_id = i.account_holder_id 
+    INNER JOIN identification_types it ON it.identification_type_id = id.identification_type_id 
+    INNER JOIN nationalities n ON n.nationality_id = i.nationality_id 
+    INNER JOIN districts d ON d.id = i.district_id 
+    INNER JOIN employment_histories eh ON eh.account_holder_id = i.account_holder_id  
+WHERE ip.policy_status_id  in ('66','3')
+  AND ip.status_date between '2018-01-01' and '2024-12-31'
+  AND ip.insurer_id  = 2230453
+  AND ip.lock_status_id = 0
+    AND ip.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND i.deleted IS NULL
+GROUP BY ip.policy_number;
