@@ -1,0 +1,75 @@
+---MTL CONNECTIONS---
+##CRIS DATABASE##
+Host		: 41.87.31.147
+Port 		: 51930
+DATABASE	: credit_data_crb
+Username	: postgres
+Password	: Postgrespassword@
+
+
+##SUSPENSES_DB##
+Host		: 41.87.31.147
+Port 		: 51930
+DATABASE	: suspenses_db
+Username	: postgres
+Password	: Postgrespassword@
+
+##UPLOADER_DB##
+Host		: 41.87.31.147
+Port 		: 51930
+DATABASE	: uploadr
+Username	: postgres
+Password	: Postgrespassword@
+
+##CDSS_DB##
+Host		: 41.87.31.147
+Port 		: 51933
+DATABASE	: cdss
+Username	: postgres
+Password	: Postgrespassword@
+
+
+##CORA_DB##
+Host		: 41.87.31.147
+Port 		: 3306
+DATABASE	: creditc_cora
+Username	: creditc_capp
+Password	: Mariadb@c
+mysql -u creditc_capp -h 41.87.31.147 -P 3306 -p creditc_cora
+mysql -u creditc_capp -h 172.16.1.32 -P 3306 -p creditc_cora
+
+
+mysql -u developer -h 172.16.1.32 -P 3306 -p creditc_cora
+
+
+
+---32 CONNECTIONS---
+
+##cora_db##
+Host		: 172.16.1.32
+Port 		: 3306
+DATABASE	: creditc_cora       
+Username	: developer
+Password 	: developer@2024
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+DB_HOST = "95.216.21.147"
+ 91 DB_USER = "cdss"
+ 92 #DB_PASSWORD = "N45dX.4Er>1T"
+ 93 DB_PASSWORD = "Cdss#1!"
+ 94 DB_NAME = "cdss"
+ 95 DB_PORT = "51933"
+
+
+
+
+ 
+FACT
+  12:08 PM
+# PostgreSQL database uploadr configuration
+ 98 DB_HOST1 = "41.87.31.147"
+ 99 DB_USER1 = "dataloader"
+100 DB_PASSWORD1 = "4TTtx8QN!AO("
+101 DB_NAME1 = "uploadr"
+102 DB_PORT1 = "51930"
