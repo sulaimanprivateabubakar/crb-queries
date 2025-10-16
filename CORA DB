@@ -1,0 +1,342 @@
+--CORA DATABASE QUERIES --
+
+--BULK ENQUIRIES--
+select r.name as report_name, c.organisation_name as client
+from enquiries e 
+inner join reports r on r.enquiry_id = e.id  
+inner join clients c on c.client_id = e.client_id 
+where date(e.created) between '2024-01-01' and '2024-01-31 23:59:59'
+and e.enquiry_source = 'BULK:FILE'
+and e.status = 'CLOSED'
+and r.amended = 0;
+
+--BULK ENQUIRIES 2--
+select r.request_date as date, r.name as report_name, c.organisation_name as client, e.status_remark as report_method
+from enquiries e 
+inner join reports r on r.enquiry_id = e.id  
+inner join clients c on c.client_id = e.client_id 
+where date(e.created) between '2024-11-01' and '2024-11-30 23:59:59'
+and e.enquiry_source = 'BULK:FILE'
+and e.status = 'CLOSED'
+and r.amended = 0;
+
+
+--CORA USERS (LAST LOGIN DETAILS)--
+select u.last_login, c.organisation_name as ClientName, u.username , cu.email, cu.phone_number, u.created_at as date_created 
+from users u
+inner join client_users as cu on cu.user_id = u.user_id 
+inner join users u2 on u2.user_id = cu.user_id 
+inner join clients as c on c.client_id = cu.client_id 
+where u.is_active = 1
+and (c.client_id <> 4 and  c.client_id <> 1);
+
+
+--REPORTS--
+select r.name as ReportName, c.organisation_name as ClientName, rp.report_code as ReportType, e.enquiry_reason as LoanReason
+from reports r
+inner join enquiries e on e.id = r.enquiry_id 
+inner join clients as c on c.client_id = r.client_id 
+inner join report_products as rp on rp.id = r.report_product_id 
+where r.created between '2025-05-01' and '2025-05-31 23:59:59' 
+and e.created between '2025-05-01' and '2025-05-31 23:59:59'
+and rp.report_code like 'COM%'
+and e.status = 'CLOSED'
+and r.amended = 0
+order by r.created
+
+
+--BULK DIRECT PULLED REPORTS--
+select r.name as report_name, c.organisation_name as client
+from enquiries e 
+inner join reports r on r.enquiry_id = e.id  
+inner join clients c on c.client_id = e.client_id 
+where date(e.created) between '2024-01-01' and '2024-01-31 23:59:59'
+and e.enquiry_source = 'BULK:FILE'
+and e.status = 'CLOSED'
+and r.amended = 0
+AND status_remark = 'Report was sent automatically via Direct Pulling.';
+
+--API/GATEWAY REPORTS--
+select count(*)
+from reports r
+inner join enquiries e on e.id = r.enquiry_id 
+where r.user_id = 1846
+and r.created between '2023-05-01' and '2023-05-31 23:59:59'
+and e.status = 'CLOSED';  
+
+--REPORTS PER DAY--
+SELECT r.read_count 
+from reports r
+inner join report_products as rp on rp.id = r.report_product_id
+inner join clients as c on c.client_id = r.client_id
+where date(r.created) between '2021-03-15' and '2021-03-22'
+and c.organisation_name like '%MUTUAL%'
+and r.read_count > 0
+
+
+--DIRECT PULL REPORTS--
+SELECT
+    c.client_id,
+    c.organisation_name,
+    c.email,
+    COUNT(e.id) AS total_direct_pulling_enquiries
+FROM
+    clients c
+INNER JOIN
+    enquiries e ON c.client_id = e.client_id
+INNER JOIN
+    reports r ON r.enquiry_id = e.id
+WHERE
+    DATE(e.created) BETWEEN '2025-07-01' AND '2025-07-31'
+    AND e.status = 'CLOSED'
+    AND r.amended = 0
+    AND e.status_remark in ('Report was sent automatically via Direct Pulling.', 'Report saved by API Gateway')
+GROUP BY
+    c.client_id, c.organisation_name, c.email
+ORDER BY
+    total_direct_pulling_enquiries DESC;
+
+
+
+--TAT STATISTICS--
+select TIMEDIFF(r.created, e.created) AS time_difference_seconds, e.created as enquired_on_date, r.created as report_date_sent, c.organisation_name,r.report_id, r.name as report_name
+from reports r
+inner join enquiries e on e.id = r.enquiry_id 
+inner join clients as c on c.client_id = r.client_id 
+inner join report_products as rp on rp.id = r.report_product_id 
+where r.created between '2025-06-08' and '2025-06-14' 
+and e.created between '2025-06-08' and '2025-06-14'  
+and rp.report_code like 'IND%'
+and e.status = 'CLOSED'
+and e.status_remark not in ('Report saved by API Gateway','Report was sent automatically via Direct Pulling.')
+and r.amended = 0
+order by r.created
+
+
+
+--TAT STATISTICS BELOW 3HRS--
+SELECT 
+    TIMEDIFF(r.created, e.created) AS time_difference_seconds, 
+    e.created AS enquired_on_date, 
+    r.created AS report_date_sent, 
+    c.organisation_name
+FROM reports r
+INNER JOIN enquiries e ON e.id = r.enquiry_id 
+INNER JOIN clients c ON c.client_id = r.client_id 
+INNER JOIN report_products rp ON rp.id = r.report_product_id 
+WHERE r.created BETWEEN '2025-01-01' AND '2025-01-31 23:59:59' 
+  AND e.created BETWEEN '2025-01-01' AND '2025-01-31 23:59:59' 
+  AND rp.report_code LIKE 'IND%'
+  AND e.status = 'CLOSED'
+  AND r.amended = 0
+  AND TIMESTAMPDIFF(SECOND, e.created, r.created) < 10800 -- Filter for time difference below 3 hours
+ORDER BY r.created;
+
+--TAT STATISTICS BELOW 24HRS--
+SELECT 
+    TIMEDIFF(r.created, e.created) AS time_difference, 
+    e.created AS enquired_on_date, 
+    r.created AS report_date_sent, 
+    c.organisation_name
+FROM reports r
+INNER JOIN enquiries e ON e.id = r.enquiry_id 
+INNER JOIN clients c ON c.client_id = r.client_id 
+INNER JOIN report_products rp ON rp.id = r.report_product_id 
+WHERE r.created BETWEEN '2025-01-01' AND '2025-01-31 23:59:59' 
+  AND e.created BETWEEN '2025-01-01' AND '2025-01-31 23:59:59' 
+  AND rp.report_code LIKE 'IND%'
+  AND e.status = 'CLOSED'
+  AND r.amended = 0
+  AND TIMESTAMPDIFF(SECOND, e.created, r.created) < 86400 -- Below 24 hours
+ORDER BY r.created;
+
+
+
+---REPORTS IN YEARS, MONTHLY---
+SELECT
+  DATE_FORMAT(r.created, '%M %Y') AS month,
+  rp.report_name AS ReportType,
+  rp.report_code,
+  rp.account_holder_type,
+  COUNT(*) AS count
+FROM reports r
+INNER JOIN report_products rp ON rp.id = r.report_product_id
+GROUP BY
+  DATE_FORMAT(r.created, '%Y-%m'),
+  rp.report_name,
+  rp.report_code,
+  rp.account_holder_type
+ORDER BY
+  MIN(r.created)
+LIMIT 0, 20000;
+
+--USERS AND THEIR NUMBER OF ENQUIRIES ---
+select count(*) as numberofenquiries, cu.first_name, cu.last_name, cu.email, cu.phone_number, u.last_login, cu.occupation from enquiries e 
+inner join users as u on u.user_id = e.filed_by 
+inner join client_users as cu on cu.user_id = u.user_id 
+inner join clients as c on c.client_id = cu.client_id 
+where e.client_id = 69 and e.created between '2021-10-01' and '2022-01-31'
+and u.is_active = 1
+group by e.filed_by;
+
+
+--USER AND THE NUMBER OF REPORTS THEY BOUGHT--
+select u.username, count(*)
+from reports r
+inner join users as u on u.user_id = r.user_id 
+inner join clients as c on c.client_id = r.client_id 
+inner join report_products as rp on rp.id = r.report_product_id
+where r.created between '2022-07-01 00:00:00' and '2022-07-31 23:59:00' 
+group by u.username 
+
+--CHECKING NUMBER OF TIMES A REPORT WAS GENERATED--
+select r.name, c.organisation_name, count(*)
+from reports r
+inner join enquiries e on e.id = r.enquiry_id 
+inner join clients as c on c.client_id = r.client_id 
+inner join report_products as rp on rp.id = r.report_product_id 
+where r.created between '2023-12-01' and '2023-12-31 23:59:59' 
+and e.created between '2023-12-01' and '2023-12-31 23:59:59'
+and rp.report_code like 'IND%'
+and e.status = 'CLOSED'
+and r.amended = 0
+group by r.name
+having count(r.name) > 1;
+
+
+
+---BILLING REPORTS---
+SELECT 
+  username, 
+  organisation_name, 
+  CONCAT(
+    individual_enquiries.first_name, 
+    ' ', individual_enquiries.middle_name, 
+    ' ', individual_enquiries.last_name
+  ) AS customer, 
+  individual_enquiries.bank_account_number, 
+  reports.name, 
+  report_products.report_name, 
+  reports.created 
+FROM 
+  reports 
+  JOIN clients ON clients.client_id = reports.client_id 
+  JOIN client_users on client_users.client_id = clients.client_id 
+  JOIN enquiries on enquiries.id = reports.enquiry_id 
+  JOIN users on users.user_id = enquiries.filed_by 
+  JOIN report_products on report_products.id = enquiries.report_product_id 
+  JOIN individual_enquiries ON individual_enquiries.enquiry_id = enquiries.id 
+WHERE 
+  users.user_type != 'API' 
+  AND reports.amended != 1 
+  AND date(reports.created) between '2025-08-12 09:28:36' 
+  and '2025-08-13 09:28:36' 
+GROUP BY 
+  report_id 
+UNION ALL 
+SELECT 
+  username, 
+  organisation_name, 
+  company_name AS customer, 
+  company_enquiries.bank_account_number, 
+  reports.name, 
+  report_products.report_name, 
+  reports.created 
+FROM 
+  reports 
+  JOIN clients ON clients.client_id = reports.client_id 
+  JOIN client_users on client_users.client_id = clients.client_id 
+  JOIN enquiries on enquiries.id = reports.enquiry_id 
+  JOIN users on users.user_id = enquiries.filed_by 
+  JOIN report_products on report_products.id = enquiries.report_product_id 
+  JOIN company_enquiries ON company_enquiries.enquiry_id = enquiries.id 
+WHERE 
+  users.user_type != 'API' 
+  AND reports.amended != 1 
+  AND date(reports.created) between '2025-08-12 09:28:36' 
+  and '2025-08-13 09:28:36' 
+GROUP BY 
+  report_id 
+ORDER BY 
+  created
+
+
+
+--AMENDED ENQUIRIES--
+WITH ranked_reports AS (
+    SELECT 
+        r.name AS report_name,
+        COALESCE(filer.username, u.username) AS sent_by,
+        u.username AS username,
+        c.organisation_name AS institution,
+        r.created AS date,
+        ROW_NUMBER() OVER (PARTITION BY r.name ORDER BY r.created DESC) AS rn
+    FROM reports r
+    INNER JOIN users u ON u.user_id = r.user_id 
+    INNER JOIN clients c ON c.client_id = r.client_id 
+    INNER JOIN enquiries e ON e.client_id = r.client_id 
+    LEFT JOIN users filer ON filer.user_id = e.filed_by 
+    WHERE r.amended = 1
+      AND r.created BETWEEN '2025-06-16' AND '2025-06-22'
+      AND r.deleted IS NOT TRUE
+)
+SELECT report_name, sent_by, username, institution, date
+FROM ranked_reports
+WHERE rn = 1;
+
+
+
+--NBS CORA USERS--
+SELECT 
+    cu.first_name, 
+    cu.last_name, 
+    cu.email, 
+    cu.phone_number, 
+    cu.occupation, 
+    cu.location AS district, 
+    u.last_login
+FROM 
+    client_users cu
+INNER JOIN 
+    users u 
+    ON u.user_id = cu.user_id
+WHERE 
+    client_id = 53
+    AND u.is_active = 1;
+
+
+--YEARLY COMPANY REPORTS--
+SELECT c.organisation_name, COUNT(*) AS total_reports_value
+FROM reports r
+INNER JOIN enquiries e ON e.id = r.enquiry_id 
+INNER JOIN clients AS c ON c.client_id = r.client_id 
+INNER JOIN report_products AS rp ON rp.id = r.report_product_id 
+INNER JOIN companies_sectors cs ON cs.id = c.company_sector_id 
+WHERE r.created BETWEEN '2025-01-01' AND '2025-06-30' 
+  AND e.created BETWEEN '2025-01-01' AND '2025-06-30' 
+  AND e.status = 'CLOSED'
+  AND r.amended = 0
+  AND c.client_id NOT IN (23, 1)
+GROUP BY c.organisation_name
+ORDER BY MAX(r.created)
+
+
+--- COMPANY NULL REPORTS---
+SELECT 
+  c.organisation_name, 
+  cs.name 
+FROM clients c
+INNER JOIN companies_sectors cs ON cs.id = c.company_sector_id
+LEFT JOIN reports r ON r.client_id = c.client_id 
+  AND r.created BETWEEN '2025-01-01' AND '2025-06-30'
+WHERE c.activated = 1
+  AND c.client_id NOT IN (23, 1)
+  AND r.report_id IS NULL;
+
+
+
+
+----CORA DATABASE MODIF---
+ALTER TABLE individual_enquiries
+ADD COLUMN bank_account_number VARCHAR(255) DEFAULT NULL;
+ 
