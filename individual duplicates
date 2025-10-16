@@ -1,0 +1,77 @@
+WITH IndividualCounts AS (
+    SELECT first_name, date_of_birth
+    FROM individuals
+    WHERE deleted IS NULL
+    GROUP BY first_name, date_of_birth
+    HAVING COUNT(DISTINCT account_holder_id) > 30
+)
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+    c.date_of_birth,
+    COUNT(DISTINCT c.account_holder_id) AS record_count,
+    ARRAY_AGG(DISTINCT ah.account_number) AS account_numbers
+FROM 
+    IndividualCounts ic
+JOIN individuals c 
+    ON ic.first_name = c.first_name 
+    AND ic.date_of_birth = c.date_of_birth
+JOIN account_holders ah 
+    ON ah.account_holder_id = c.account_holder_id
+WHERE 
+    c.deleted IS NULL 
+    AND ah.deleted IS NULL
+    AND c.first_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND c.last_name NOT IN ('N\A','UNKNOWN','-1','-','.','NaN','null', 'NULL', 'None', '0', 'e0')
+    AND LENGTH(c.first_name) > 3
+    AND LENGTH(c.last_name) > 3
+    AND c.date_of_birth != '1905-01-01'
+GROUP BY 
+    c.first_name, c.last_name, c.date_of_birth
+ORDER BY 
+    record_count DESC;
+
+
+
+
+
+
+
+
+WITH IndividualCounts AS (
+    SELECT first_name, date_of_birth
+    FROM individuals
+    WHERE deleted IS NULL
+    GROUP BY first_name, date_of_birth
+    HAVING COUNT(DISTINCT account_holder_id) > 30
+)
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+    c.date_of_birth,
+    COUNT(DISTINCT c.account_holder_id) AS record_count,
+    ARRAY_AGG(DISTINCT ah.account_number) AS account_numbers
+FROM 
+    IndividualCounts ic
+JOIN individuals c 
+    ON ic.first_name = c.first_name 
+    AND ic.date_of_birth = c.date_of_birth
+JOIN account_holders ah 
+    ON ah.account_holder_id = c.account_holder_id
+WHERE 
+    c.deleted IS NULL 
+    AND ah.deleted IS NULL
+    AND UPPER(c.first_name) NOT IN (
+        'N\A','UNKNOWN','-1','-','.','NAN','NULL','NONE','0','E0'
+    )
+    AND UPPER(c.last_name) NOT IN (
+        'N\A','UNKNOWN','-1','-','.','NAN','NULL','NONE','0','E0',
+        'NGWIRA','GONDWE','KARONGA','KALONGA','MBEWE','KAMANGA','BANDA',
+        'JERE','CHISALE','CHIRWA','MKANDAWIRE','PHIRI','MKHATA','MHANGO',
+        'SAKA','KONDOWE','NKHOMA','KAUNDA','ZIMBA','GAMA'
+    )
+    AND LENGTH(c.first_name) > 3
+    AND LENGTH(c.last_name) > 3
+    AND c.date_of_birth != '1905-01-01'
+GROUP BY 
+    c.first_name, c.last_name, c.date_of_birth
+ORDER BY 
+    record_count DESC;
