@@ -1,0 +1,164 @@
+--total individuals--
+select count(i.account_holder_id ) from individuals i
+inner join account_holders as ah on ah.account_holder_id = i.account_holder_id
+where ah.deleted is null  
+and i.deleted is null;
+
+--deleted individuals--
+select COUNT(i.account_holder_id) as TOTAL from individuals i
+inner join account_holders as ah on ah.account_holder_id = i.account_holder_id
+where i.deleted is not null 
+and ah.deleted is not null;
+
+--deleted individuals--
+select COUNT(i.account_holder_id) as TOTAL from individuals i
+inner join account_holders as ah on ah.account_holder_id = i.account_holder_id
+where i.deleted is not null 
+and ah.deleted is not null
+and i.deleted between '2025-08-01' and '2025-08-31';
+
+--unique individuals--
+WITH CTE AS(
+SELECT COUNT(CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth)) AS count
+FROM individuals 
+inner join account_holders ah on ah.account_holder_id = individuals.account_holder_id 
+where individuals.deleted is null
+and ah.deleted is null
+GROUP BY CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth)
+HAVING COUNT(CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth))
+= 1 )
+SELECT SUM(count) FROM CTE;
+
+--duplicated individuals--
+WITH CTE AS(
+SELECT COUNT(CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth)) AS count
+FROM individuals 
+inner join account_holders ah on ah.account_holder_id = individuals.account_holder_id 
+where individuals.deleted is null
+and ah.deleted is null 
+GROUP BY CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth)
+HAVING COUNT(CONCAT(UPPER(replace(replace(replace(replace(replace(replace(replace(replace(CONCAT(first_name,last_name),' ',''),'.',''),',',''),'1',''),'0',''),'2',''),'9',''),'-','')),date_of_birth))
+> 1 )
+SELECT SUM(count) FROM CTE;
+
+--merged individuals--
+select i.first_name, i.last_name, i.date_of_birth, count(*), array_agg(ah.account_number) from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+where ah.deleted is null and i.deleted is null
+and date(m.created) BETWEEN '2025-08-01' and '2025-08-17'
+group by i.first_name, i.last_name, i.date_of_birth 
+having count(concat(i.first_name, i.last_name)) > 1;
+
+
+-- Individual merged2--
+select count(*) from merges m
+where date(m.created) BETWEEN '2025-08-01' and '2025-08-17'
+and m.source_account_number like '%CDI%'
+and m.rollback_date is null;
+
+
+
+--duplicated individuals--
+WITH CTE AS (
+  SELECT COUNT(
+    CONCAT(
+      UPPER(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                        ' ', ''
+                      ),
+                      '.', ''
+                    ),
+                    ',', ''
+                  ),
+                  '1', ''
+                ),
+                '0', ''
+              ),
+              '2', ''
+            ),
+            '9', ''
+          ),
+          '-', ''
+        )
+      ),
+      date_of_birth
+    )
+  ) AS count
+  FROM individuals
+  INNER JOIN account_holders ah ON ah.account_holder_id = individuals.account_holder_id
+  WHERE individuals.deleted IS NULL
+    AND ah.deleted IS NULL
+    AND date_of_birth != '1905-01-01'  -- Exclude default date of birth
+  GROUP BY CONCAT(
+    UPPER(
+      REPLACE(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                      ' ', ''
+                    ),
+                    '.', ''
+                  ),
+                  ',', ''
+                ),
+                '1', ''
+              ),
+              '0', ''
+            ),
+            '2', ''
+          ),
+          '9', ''
+        ),
+        '-', ''
+      )
+    ),
+    date_of_birth
+  )
+  HAVING COUNT(
+    CONCAT(
+      UPPER(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                        ' ', ''
+                      ),
+                      '.', ''
+                    ),
+                    ',', ''
+                  ),
+                  '1', ''
+                ),
+                '0', ''
+              ),
+              '2', ''
+            ),
+            '9', ''
+          ),
+          '-', ''
+        )
+      ),
+      date_of_birth
+    )
+  ) > 1
+)
+SELECT SUM(count) FROM CTE;
+
