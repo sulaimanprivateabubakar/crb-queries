@@ -1,0 +1,47 @@
+SELECT 
+    i.first_name,
+    i.last_name,
+    MAX(NULLIF(id.expiry_date::TEXT, 'UNKNOWN')::DATE) AS id_expiry_date,
+    MAX(NULLIF(eh.employer_name, 'UNKNOWN')) AS employer,
+    MAX(NULLIF(i.profession, 'UNKNOWN')) AS occupation,
+    MAX(NULLIF(c.account_reference_no, 'UNKNOWN')) AS loan_reference_no,
+    MAX(NULLIF(at.account_type, 'UNKNOWN')) AS product_type,
+    COALESCE(MAX(NULLIF(c.due_balance, -1)), NULL) AS overdue_principal,
+    COALESCE(MAX(NULLIF(c.current_balance, -1)), NULL) AS current_balance,
+    MAX(NULLIF(cls.credit_line_status, 'UNKNOWN')) AS loan_status,
+    MAX(NULLIF(c.account_status_date::TEXT, 'UNKNOWN')::DATE) AS status_change_date,
+    COALESCE(MAX(NULLIF(c.days_in_arrears, -1)), NULL) AS overdue_days,
+    MAX(NULLIF(c.disbursement_date::TEXT, 'UNKNOWN')::DATE) AS date_opened,
+    MAX(NULLIF(c.clearing_date::TEXT, 'UNKNOWN')::DATE) AS due_date,
+    MAX(NULLIF(c.last_transaction_date::TEXT, 'UNKNOWN')::DATE) AS last_payment_date
+FROM 
+    credit_lines c
+    INNER JOIN account_holders ah 
+        ON c.account_holder_id = ah.account_holder_id
+    INNER JOIN individuals i 
+        ON ah.account_holder_id = i.account_holder_id
+    INNER JOIN account_types at 
+        ON c.account_type_id = at.id
+    INNER JOIN payment_terms pt 
+        ON c.payment_term_id = pt.payment_term_id
+    INNER JOIN credit_line_statuses cls 
+        ON c.status_id = cls.credit_line_status_id
+    INNER JOIN identification_documents id 
+        ON id.account_holder_id = i.account_holder_id 
+    INNER JOIN identification_types it 
+        ON it.identification_type_id = id.identification_type_id 
+    INNER JOIN nationalities n 
+        ON n.nationality_id = i.nationality_id 
+    INNER JOIN districts d 
+        ON d.id = i.district_id 
+    INNER JOIN employment_histories eh 
+        ON eh.account_holder_id = i.account_holder_id 
+WHERE 
+    c.account_reference_no = '17868692'
+    AND c.lock_status_id = 0
+    AND i.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND c.deleted IS NULL
+GROUP BY 
+    i.first_name, 
+    i.last_name;
