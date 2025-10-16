@@ -1,0 +1,279 @@
+---For All individuals---
+SELECT COUNT(*)
+FROM individuals i
+JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM individuals i2 
+    JOIN account_holders ah2 ON ah2.account_holder_id = i2.account_holder_id 
+    WHERE i.first_name = i2.first_name 
+      AND i.last_name = i2.last_name 
+      AND i.date_of_birth = i2.date_of_birth 
+      AND i2.created < '2025-01-01'  -- check for any earlier duplicates
+      AND (i2.deleted IS NULL OR i2.deleted >= '2025-01-01') -- still active or deleted after Jan
+      AND (ah2.deleted IS NULL OR ah2.deleted >= '2025-01-01')
+)
+AND i.created BETWEEN '2025-01-01' AND '2025-06-30'
+AND i.deleted IS NULL
+AND ah.deleted IS NULL;
+
+
+
+---For females---
+SELECT COUNT(*)
+FROM individuals i
+JOIN account_holders ah ON ah.account_holder_id = i.account_holder_id
+WHERE i.sex = 'FEMALE'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM individuals i2 
+    JOIN account_holders ah2 ON ah2.account_holder_id = i2.account_holder_id 
+    WHERE i.first_name = i2.first_name 
+      AND i.last_name = i2.last_name 
+      AND i.date_of_birth = i2.date_of_birth 
+      AND i2.created < '2025-01-01'
+      AND (i2.deleted IS NULL OR i2.deleted >= '2025-01-01')
+      AND (ah2.deleted IS NULL OR ah2.deleted >= '2025-01-01')
+)
+AND i.created BETWEEN '2025-01-01' AND '2025-06-30'
+AND i.deleted IS NULL
+AND ah.deleted IS NULL;
+
+
+---FOR SME''s---
+SELECT COUNT(*)
+FROM companies c
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+INNER JOIN company_types c2 ON c2.company_type_id = c.company_sector_id
+WHERE c2.company_type_id IN (1, 2, 12, 13)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM account_holders ah_prev
+      INNER JOIN companies c_prev ON c_prev.account_holder_id = ah_prev.account_holder_id
+      WHERE c.company_name = c_prev.company_name
+        AND ah_prev.created < '2025-06-01'
+        AND (ah_prev.deleted IS NULL OR ah_prev.deleted >= '2025-06-01')
+        AND (c_prev.deleted IS NULL OR c_prev.deleted >= '2025-06-01')
+  )
+  AND ah.created BETWEEN '2025-06-01' AND '2025-06-30'
+  AND ah.deleted IS NULL
+  AND c.deleted IS NULL;
+
+
+
+
+
+
+----DATA FOR ARCHIVAL---
+SELECT 
+    c.company_name, 
+    COUNT(DISTINCT cl.account_reference_no) AS total_count
+FROM 
+    credit_lines cl
+JOIN 
+    companies c ON cl.creditor_id = c.account_holder_id
+WHERE 
+    cl.account_status_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+    AND cl.disbursement_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+    AND cl.clearing_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+    AND cl.deleted IS NULL
+    AND cl.lock_status_id != 11
+    AND c.deleted IS NULL
+GROUP BY 
+    c.company_name
+ORDER BY 
+    total_count DESC;
+
+
+
+
+
+
+SELECT 
+    MAX(NULLIF(i.title, 'UNKNOWN')) AS salutation, 
+    i.last_name,
+    i.first_name,
+    MAX(NULLIF(i.middle_name, 'UNKNOWN')) AS middle_name, 
+    MAX(NULLIF(i.maiden_name, 'UNKNOWN')) AS maiden_name, 
+    MAX(NULLIF(i.sex, 'UNKNOWN')) AS gender, 
+    MAX(NULLIF(i.marital_status, 'UNKNOWN')) AS marital_status, 
+    COALESCE(MAX(NULLIF(i.no_of_dependents, -1)), 0) AS no_of_dependents, 
+    MAX(NULLIF(i.date_of_birth::TEXT, 'UNKNOWN')::DATE) AS date_of_birth,
+    MAX(NULLIF(id.id_number, 'UNKNOWN')) AS national_id_no, 
+    MAX(NULLIF(it.identification_type, 'UNKNOWN')) AS id_type,
+    MAX(NULLIF(id.id_number, 'UNKNOWN')) AS id_no,
+    MAX(NULLIF(n.nationality, 'UNKNOWN')) AS nationality, 
+    MAX(NULLIF(i.home_village, 'UNKNOWN')) AS village, 
+    MAX(NULLIF(i.home_village_ta, 'UNKNOWN')) AS T_A, 
+    MAX(NULLIF(d.district_name, 'UNKNOWN')) AS home_district, 
+    MAX(NULLIF(i.residence_permit_no, 'UNKNOWN')) AS resident_permit_no, 
+    MAX(NULLIF(ah.mobile, 'UNKNOWN')) AS phone_no, 
+    MAX(NULLIF(ah.postal_address, 'UNKNOWN')) AS postal_address, 
+    MAX(NULLIF(ah.email, 'UNKNOWN')) AS email_address, 
+    MAX(NULLIF(ah.physical_address, 'UNKNOWN')) AS residential_address,
+    MAX(NULLIF(ah.physical_address_district, 'UNKNOWN')) AS residential_district, 
+    MAX(NULLIF(ah.plot_number, 'UNKNOWN')) AS plot_no, 
+    MAX(NULLIF(i.profession, 'UNKNOWN')) AS profession_occupation, 
+    MAX(NULLIF(eh.employer_name, 'UNKNOWN')) AS employer_name, 
+    MAX(NULLIF(eh.employer_postal_address, 'UNKNOWN')) AS employer_address, 
+    MAX(NULLIF(eh.employee_number, 'UNKNOWN')) AS employee_phone_no, 
+    MAX(NULLIF(eh.start_date::TEXT, 'UNKNOWN')::DATE) AS employment_date,
+    MAX(NULLIF(c.branch_id_code, 'UNKNOWN')) AS branch_code_name, 
+    MAX(NULLIF(c.account_reference_no, 'UNKNOWN')) AS loan_reference_no,
+    MAX(NULLIF(c.sub_account_reference_no, 'UNKNOWN')) AS old_loan_reference_no, 
+    MAX(NULLIF(c.reporting_currency, 'UNKNOWN')) AS currency, 
+    COALESCE(MAX(NULLIF(c.principal_amount, -1)), NULL) AS approved_amount,
+    COALESCE(MAX(NULLIF(c.principal_amount_local, -1)), NULL) AS approved_amount_mwk, 
+    COALESCE(MAX(NULLIF(c.approved_amount, -1)), NULL) AS disbursed_amount, 
+    COALESCE(MAX(NULLIF(c.approved_amount_local, -1)), NULL) AS disbursed_amount_mwk, 
+    MAX(NULLIF(c.disbursement_date::TEXT, 'UNKNOWN')::DATE) AS disbursement_date,
+    MAX(NULLIF(c.clearing_date::TEXT, 'UNKNOWN')::DATE) AS maturity_date, 
+    MAX(NULLIF(c.participation_code, 'UNKNOWN')) AS borrower_type, 
+    MAX(NULLIF(c.group_name, 'UNKNOWN')) AS group_name, 
+    MAX(NULLIF(c.group_number, 'UNKNOWN')) AS group_no, 
+    MAX(NULLIF(pt.payment_term, 'UNKNOWN')) AS payment_terms, 
+    MAX(NULLIF(c.rbm_class, 'UNKNOWN')) AS rbm_classification,
+    MAX(NULLIF(cls.credit_line_status, 'UNKNOWN')) AS account_status,  
+    MAX(NULLIF(c.account_status_date::TEXT, 'UNKNOWN')::DATE) AS account_status_change_date, 
+    COALESCE(MAX(NULLIF(c.monthly_repayment, -1)), NULL) AS scheduled_repayment_amount, 
+    COALESCE(MAX(NULLIF(c.monthly_repayment_local, -1)), NULL) AS scheduled_repayment_amount_mwk, 
+    COALESCE(MAX(NULLIF(c.amount_paid, -1)), NULL) AS total_amount_paid_to_date, 
+    COALESCE(MAX(NULLIF(c.amount_paid_local, -1)), NULL) AS total_amount_paid_to_date_mwk, 
+    COALESCE(MAX(NULLIF(c.current_balance, -1)), NULL) AS current_balance, 
+    COALESCE(MAX(NULLIF(c.current_balance_local, -1)), NULL) AS current_balance_mwk,
+    COALESCE(MAX(NULLIF(c.available_credit, -1)), NULL) AS available_credit, 
+    COALESCE(MAX(NULLIF(c.available_credit_local, -1)), NULL) AS available_credit_mwk, 
+    COALESCE(MAX(NULLIF(c.due_balance, -1)), NULL) AS amount_in_arrears, 
+    COALESCE(MAX(NULLIF(c.due_balance_local, -1)), NULL) AS amount_in_arrears_mwk, 
+    COALESCE(MAX(NULLIF(c.days_in_arrears, -1)), NULL) AS days_in_arrears, 
+    COALESCE(MAX(NULLIF(c.installments_in_arrears, -1)), NULL) AS no_of_installments_in_arrears, 
+    MAX(NULLIF(c.collateral_type, 'UNKNOWN')) AS collateral_type, 
+    NULL AS default_date, 
+    MAX(NULLIF(c.closed_date::TEXT, 'UNKNOWN')::DATE) AS pay_off_termination_date, 
+    MAX(NULLIF(c.reason_for_closure, 'UNKNOWN')) AS reason_for_closure, 
+    MAX(NULLIF(c.first_payment_date::TEXT, 'UNKNOWN')::DATE) AS first_payment_date,
+    MAX(NULLIF(c.last_transaction_date::TEXT, 'UNKNOWN')::DATE) AS last_payment_date, 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount, -1)), NULL) AS last_payment_amount, 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount_local, -1)), NULL) AS last_payment_amount_mwk 
+FROM 
+    credit_lines c
+    INNER JOIN account_holders ah ON c.account_holder_id = ah.account_holder_id
+    INNER JOIN individuals i ON ah.account_holder_id = i.account_holder_id
+    INNER JOIN account_types at ON c.account_type_id = at.id
+    INNER JOIN payment_terms pt ON c.payment_term_id = pt.payment_term_id
+    INNER JOIN credit_line_statuses cls ON c.status_id = cls.credit_line_status_id
+    INNER JOIN identification_documents id ON id.account_holder_id = i.account_holder_id 
+    INNER JOIN identification_types it ON it.identification_type_id = id.identification_type_id 
+    INNER JOIN nationalities n ON n.nationality_id = i.nationality_id 
+    INNER JOIN districts d ON d.id = i.district_id 
+    INNER JOIN employment_histories eh ON eh.account_holder_id = i.account_holder_id 
+WHERE c.account_status_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+  AND c.disbursement_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+  AND c.clearing_date < (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '5 months') - INTERVAL '7 years'
+  AND c.creditor_id = 698
+  AND c.lock_status_id != 11
+  AND i.deleted IS NULL 
+  AND ah.deleted IS NULL 
+  AND c.deleted IS NULL
+  GROUP BY i.last_name, i.first_name;
+
+
+
+
+
+--COMPANY TEMPLATE(WITHOUT DUPLICATES)
+   SELECT 
+    co.company_name AS "Business/Entity Name", 
+    MAX(ct.company_type) AS "Type of Business/Entity",
+    MAX(co.mra_tpin) as "TPI no.",
+    MAX(co.registration_number) as "Registration Number",
+    MAX(co.registration_date) AS "Registration Date",
+    MAX(cs.company_status) AS "Business Status",  
+    MAX(cs2.company_sector) AS "Industry", 
+    MAX(co.contact_person_name) as "Contact person",
+    MAX(co.contact_person_phone_number) as "Contact Person Phone Number",
+    MAX(ah.email) as "Email Adderess",
+    MAX(ah.telephone) as "Phone No.",
+    MAX(ah.postal_address) as "Postal/Mailing Address",
+    MAX(ah.physical_address) as "Physical Address",
+    MAX(ah.plot_number) as "Plot No.",
+    MAX(c.branch_id_code) as "Branch Code/Name",
+    MAX(c.account_reference_no) AS "Loan Reference No.",
+    MAX(c.sub_account_reference_no) AS "Old Loan Reference No.", 
+    MAX(c.reporting_currency) AS "Currency", 
+    COALESCE(MAX(NULLIF(c.principal_amount, -1)), 0) AS "Approved Amount",
+    COALESCE(MAX(NULLIF(c.principal_amount_local, -1)), 0) AS "Approved Amount(MWK)", 
+    COALESCE(MAX(NULLIF(c.approved_amount, -1)), 0) AS "Disbursed Amount", 
+    COALESCE(MAX(NULLIF(c.approved_amount_local, -1)), 0) AS "Disbursed Amount (MWK)",  
+    MAX(c.disbursement_date) AS "Disbursement Date",
+    MAX(c.clearing_date) AS "Maturity Date",
+    MAX(pt.property_type) AS "Product Type",
+    MAX(pt2.payment_term) AS "Payment Terms", 
+    MAX(c.collateral_status) AS "Collateral Status",  
+    MAX(c.rbm_class) AS "Reserve Bank Classification", 
+    MAX(cls.credit_line_status) AS "Account Status", 
+    MAX(c.account_status_date) AS "Account Status Change Date",
+    COALESCE(MAX(NULLIF(c.monthly_repayment, -1)), 0) AS "Scheduled Repayment Amount", 
+    COALESCE(MAX(NULLIF(c.monthly_repayment_local, -1)), 0) AS "Scheduled Repayment Amount (MWK)",
+    COALESCE(MAX(NULLIF(c.amount_paid, -1)), 0) AS "Total Amount Paid To Date", 
+    COALESCE(MAX(NULLIF(c.amount_paid_local, -1)), 0) AS "Total Amount Paid To Date (MWK)", 
+    COALESCE(MAX(NULLIF(c.current_balance, -1)), 0) AS "Current Balance", 
+    COALESCE(MAX(NULLIF(c.current_balance_local, -1)), 0) AS "Current Balance (MWK)",
+    COALESCE(MAX(NULLIF(c.available_credit, -1)), 0) AS "Available Credit",
+    COALESCE(MAX(NULLIF(c.available_credit_local, -1)), 0) AS "Available Credit (MWK)", 
+    COALESCE(MAX(NULLIF(c.due_balance_local, -1)), 0) AS "Amount In Arrears (MWK)", 
+    COALESCE(MAX(NULLIF(c.days_in_arrears, -1)), 0) AS "Days In Arrears",  
+    COALESCE(MAX(NULLIF(c.no_of_installments, -1)), 0) AS "No. of Installments In Arrears", 
+    NULL AS default_date, 
+    MAX(c.closed_date) AS "Pay Off/Termination Date",
+    MAX(c.reason_for_closure) AS "Reason For Closure", 
+    MAX(c.first_payment_date) AS "First Payment Date", 
+    MAX(c.last_transaction_date) AS "Last Payment Date", 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount, -1)), 0) AS "Last Payment Amount", 
+    COALESCE(MAX(NULLIF(c.last_transaction_amount_local, -1)), 0) AS "Last Payment Amount (MWK)"
+FROM credit_lines c
+    INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+    INNER JOIN companies co ON co.account_holder_id = c.account_holder_id 
+    INNER JOIN payment_terms pt2 ON pt2.payment_term_id = c.payment_term_id
+    INNER JOIN company_statuses cs ON co.company_status_id = cs.company_status_id 
+    LEFT JOIN property_types pt ON pt.property_type = pt.property_type
+    LEFT JOIN company_sectors cs2 ON co.company_sector_id = cs2.company_sector_id
+    LEFT JOIN credit_line_statuses cls ON c.status_id = cls.credit_line_status_id
+    left join company_types ct on co.company_type_id = ct.company_type_id 
+    where c.status_id in (66,3)
+    and c.clearing_date between '2018-01-01' and '2022-12-31'
+  AND c.lock_status_id != 11
+  AND ah.deleted IS NULL 
+  AND c.deleted IS null
+  GROUP BY co.company_name;
+
+
+
+
+
+  ----credit_lines deletions---
+SELECT 
+    distinct ah.account_number,
+    COALESCE(cl.account_reference_no, ip.policy_number) AS reference_number,
+    dr.reason,
+    u_requester.fullname AS requester,
+    u_action.fullname AS approved,
+    dr.created,
+    cls.credit_line_status
+FROM 
+    credit_lines cl
+INNER JOIN 
+    delete_requests dr ON dr.account_holder_id = cl.account_holder_id
+INNER JOIN 
+    insurance_policies ip ON ip.account_holder_id = dr.account_holder_id
+INNER JOIN 
+    account_holders ah ON ah.account_holder_id = dr.account_holder_id
+INNER JOIN 
+    credit_line_statuses cls ON cls.credit_line_status_id = cl.status_id
+LEFT JOIN 
+    users u_requester ON u_requester.id = dr.requested_by
+LEFT JOIN 
+    users u_action ON u_action.id = dr.action_by
+WHERE 
+    u_action.department = 'CHECKING'
+    AND dr.created BETWEEN '2025-09-01' AND '2025-09-30';
