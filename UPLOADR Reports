@@ -1,0 +1,52 @@
+--DATA PROVIDERS VOLUMES--
+SELECT dp.organisation_name AS provider_name, 
+       SUM(df.count_entities_loaded) AS total_volume
+FROM data_files df 
+INNER JOIN data_providers dp ON dp.id = df.data_provider_id
+WHERE df.created_at BETWEEN '2025-06-01' AND '2025-06-30'
+GROUP BY dp.organisation_name
+
+
+ --DATA PROVIDERS TOTAL VOLUMES--
+WITH RankedData AS (
+    SELECT 
+        df.count_entities_loaded,
+        LAG(df.count_entities_loaded) OVER (
+            ORDER BY df.created_at
+        ) AS prev_loaded
+    FROM data_files df
+    WHERE df.created_at BETWEEN '2025-07-01' AND '2025-07-31'
+),
+FilteredData AS (
+    SELECT 
+        count_entities_loaded
+    FROM RankedData
+    WHERE count_entities_loaded <> prev_loaded OR prev_loaded IS NULL
+)
+SELECT SUM(count_entities_loaded) AS total_volume
+FROM FilteredData;
+
+
+--FOR REJECTED RECORDS MINUS THIS WITH TOTAL VOLUMES-- 
+WITH RankedData AS (
+    SELECT 
+        df.count_rows_loaded,
+        LAG(df.count_rows_loaded) OVER (
+            ORDER BY df.created_at
+        ) AS prev_loaded
+    FROM data_files df
+    WHERE df.created_at BETWEEN '2025-07-01' AND '2025-07-31'
+),
+FilteredData AS (
+    SELECT 
+        count_rows_loaded
+    FROM RankedData
+    WHERE count_rows_loaded <> prev_loaded OR prev_loaded IS NULL
+)
+SELECT SUM(count_rows_loaded) AS total_volume
+FROM FilteredData;
+
+--TOTAL FILES--
+SELECT COUNT(DISTINCT df.file_name) 
+FROM data_files df 
+WHERE df.created_at BETWEEN '2025-07-01' AND '2025-07-31';
