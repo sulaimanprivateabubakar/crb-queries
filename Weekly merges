@@ -1,0 +1,72 @@
+-- for weekly merges--
+SELECT 
+    m.action_by, 
+    u.fullname, 
+    u.department, 
+    COUNT(*) AS merge_count
+FROM 
+    merges m
+INNER JOIN 
+    users u 
+    ON u.username = m.action_by 
+WHERE 
+    created BETWEEN '2025-07-01' AND '2025-07-20'
+    and m.action_by ='suspenses'
+    and m.rollback_date is null
+GROUP BY 
+    m.action_by, 
+    u.department, 
+    u.fullname;
+
+
+    
+---Total merges---
+---Total merges---
+SELECT 
+    m.action_by, 
+    u.fullname, 
+    u.department, 
+    COUNT(*) AS merge_count, 
+    SUM(COUNT(*)) OVER () AS total_count -- Adds the total count of all rows
+FROM 
+    merges m
+INNER JOIN 
+    users u 
+    ON u.username = m.action_by 
+WHERE 
+    created BETWEEN '2025-08-01' AND '2025-08-31'
+    and m.rollback_date is null
+GROUP BY 
+    m.action_by, 
+    u.department, 
+    u.fullname
+
+
+
+
+
+
+---Total merges---
+SELECT 
+    m.action_by, 
+    u.fullname, 
+    u.department, 
+    COUNT( distinct target_account_number) AS merge_count, 
+    SUM(COUNT(*)) OVER () AS total_count -- Adds the total count of all rows
+FROM 
+    merges m
+INNER JOIN 
+    users u 
+    ON u.username = m.action_by 
+WHERE 
+    m.created BETWEEN '2025-07-01' AND '2025-07-20'
+    and m.rollback_date is null
+GROUP BY 
+    m.action_by, 
+    u.department, 
+    u.fullname;
+
+
+
+
+
