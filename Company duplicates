@@ -1,0 +1,27 @@
+SELECT 
+    c.company_name,
+    COUNT(*) AS total_records,
+    ARRAY_AGG(DISTINCT ah.account_number) AS account_numbers
+FROM companies c
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+WHERE c.deleted IS NULL
+  AND ah.deleted IS NULL
+GROUP BY c.company_name
+HAVING COUNT(*) > 2
+ORDER BY total_records DESC;
+
+
+
+---VERIFIED INDIVIDUALS--
+select count(*) from account_holders ah 
+where ah.is_verified is true 
+and ah.deleted is null 
+and ah.account_holder_type ='Individual'
+
+
+select count(*) from account_holders ah 
+inner join individuals i on i.account_holder_id = ah.account_holder_id
+where ah.is_verified is true 
+and ah.deleted is null 
+and ah.account_holder_type ='Individual'
+and i.deleted is null
