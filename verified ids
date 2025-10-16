@@ -1,0 +1,6 @@
+select * from identification_documents id  
+inner join account_holders ah on ah.account_holder_id = id.account_holder_id 
+where ah.account_holder_type ='Individual'
+and id.is_valid is true
+and ah.deleted is null 
+and id.deleted is null
