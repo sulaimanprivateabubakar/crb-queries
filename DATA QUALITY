@@ -1,0 +1,823 @@
+select count(*) from insurance_policies ip 
+where ip.policy_status_id = 8
+and deleted is null;
+
+
+select count(*) from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id
+where last_name = 'UNKNOWN'
+and i.deleted is null and ah.deleted is null;
+
+
+
+--unknown gender
+select count(*) from individuals i 
+where sex = 'UNKNOWN'
+and deleted is null;
+
+--companies with unknown sectors
+select count(*) from companies c 
+where c.company_sector_id = 20
+and deleted is null;
+
+
+--companies without registration number
+select count(*) from companies c 
+where c.registration_number is null
+and deleted is null;
+ 
+
+--individuals < 18yr olds
+select count(*) from individuals i 
+where date_of_birth > '2007-12-31'
+and date_of_birth <> '1905-01-01'
+and deleted is null;
+
+select count(*) from individuals i 
+where date_of_birth =  '1905-01-01'
+and deleted is null;
+
+
+--unknown liability status
+select count(*) from credit_lines cl 
+where status_id = 24
+and deleted is null
+and lock_status_id = 0  ;
+
+ 
+--unknown as ref number
+select count(*) from credit_lines cl 
+where cl.account_reference_no = 'UNKNOWN'
+and deleted is null
+and cl.lock_status_id = 0;
+
+select count(*) from credit_lines cl 
+where disbursement_date between '2023-08-01' and '2023-08-31';
+
+--PAID UP status with current balance
+select count(*) from credit_lines cl 
+where cl.status_id in (68,14)
+and deleted is null
+and cl.current_balance > 1
+and cl.lock_status_id = 0;
+
+--Monthly repayment greater than principal amount
+select count(*) from credit_lines cl 
+where cl.monthly_repayment > principal_amount 
+and deleted is null
+and cl.lock_status_id = 0
+
+--without ids 
+select count(*) from identification_documents id 
+inner join individuals as i on i.account_holder_id = id.account_holder_id 
+where id.identification_type_id = 6 or id.identification_type_id = 7
+and id.deleted is null and i.deleted is null;
+
+
+--excel errors
+select count(*) from credit_lines cl 
+where account_reference_no like '%+%'
+and deleted is null;
+
+
+--duplicated companies
+select c.company_name, count(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null 
+group by c.company_name 
+having count(company_name) > 1;
+
+
+--duplicated companies which are more than 10
+select distinct c.company_name, count(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null
+and ah.deleted is null 
+group by c.company_name
+having count(*) > 10;
+
+SELECT 
+    c.company_name,
+    COUNT(*) AS total_records,
+    ARRAY_AGG(DISTINCT ah.account_number) AS account_numbers
+FROM companies c
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id
+WHERE c.deleted IS NULL
+AND ah.deleted IS NULL
+GROUP BY c.company_name
+HAVING COUNT(*) > 10;
+
+
+
+--improper first names i.e A. Phiri=
+select ah.account_number, i2.first_name, i2.last_name from individuals i2 
+inner join account_holders ah on ah.account_holder_id = i2.account_holder_id 
+left join utilities cl on cl.account_holder_id = i2.account_holder_id 
+where i2.deleted is null and ah.deleted is null and cl.deleted is null
+and length(last_name) <= 3
+and i2.created between '2016-01-01' and '2016-12-31 23:59:59';  
+
+select count(*) from credit_lines cl 
+where (status_id = 35 or status_id = 43 or status_id = 45 or status_id = 15 or status_id = 59)
+and deleted is null
+
+select count(*) from merges m
+where created between '2023-03-01 13:00:00' and '2023-03-01 13:10:00'
+and source_account_number like '%CDI%';
+
+--improper first names i.e A. Phiri
+select cl.account_reference_no, array_agg(distinct(ah.account_number)) 
+from individuals i2 
+inner join account_holders ah on ah.account_holder_id = i2.account_holder_id
+inner join credit_lines cl on cl.account_holder_id = i2.account_holder_id 
+where (select count(*) from individuals inr
+inner join credit_lines cl2 on cl2.account_holder_id = inr.account_holder_id 
+where inr.first_name = i2.first_name and inr.last_name = i2.last_name and inr.date_of_birth = i2.date_of_birth 
+and cl2.creditor_id = cl.creditor_id 
+and inr.deleted is null) > 1
+and length(last_name) <= 2
+and i2.deleted is null and ah.deleted is null and cl.deleted is null
+group by cl.account_reference_no
+having count(ah.account_number) > 1;
+
+select cl.account_reference_no, array_agg(distinct(ah.account_number))
+from account_holders ah
+inner join credit_lines cl on cl.account_holder_id = ah.account_holder_id
+where
+    ah.deleted is null
+    and cl.lock_status_id = 0
+    and cl.creditor_id in (5985)
+    and cl.deleted is null
+group by cl.account_reference_no
+having count(cl.account_reference_no) > 1
+
+select creditor_id, count(*), c.company_name from credit_lines cl 
+inner join companies c on c.account_holder_id = cl.creditor_id 
+where cl.deleted is null and c.deleted is null
+and lock_status_id = 0
+group by creditor_id, c.company_name 
+
+---national ids less than 8 characters
+select count(*) from identification_documents id 
+inner join individuals i on i.account_holder_id = id.account_holder_id 
+where id.identification_type_id = 8
+and length(id.id_number) < 8
+and i.deleted is null and id.deleted is null
+
+--one account holder having different national ID's
+select id_number, ah.account_number from identification_documents c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count (inr.account_holder_id) from identification_documents inr
+where inr.account_holder_id = c.account_holder_id 
+and inr.id_number <> c.id_number 
+and inr.deleted is null) > 2
+and c.identification_type_id = 8
+and c.deleted is null 
+group by ah.account_number , id_number 
+
+--CENTENARY BANK one account holder having different national ID's
+SELECT 
+    c.id_number, 
+    ah.account_number 
+FROM identification_documents c
+INNER JOIN account_holders ah ON ah.account_holder_id = c.account_holder_id 
+INNER JOIN credit_lines cl ON cl.account_holder_id = ah.account_holder_id  -- Join with the credit_lines table
+WHERE (
+        SELECT COUNT(inr.account_holder_id) 
+        FROM identification_documents inr
+        WHERE inr.account_holder_id = c.account_holder_id 
+        AND inr.id_number <> c.id_number 
+        AND inr.deleted IS NULL
+      ) > 2
+AND c.identification_type_id = 8
+AND c.deleted IS NULL
+AND cl.creditor_id = 19934243
+GROUP BY ah.account_number, c.id_number;
+
+
+--standard bank paid up with current balance---
+select distinct(cl.account_reference_no), ah.account_number, concat(i.first_name, ' ', i.last_name), cls.credit_line_status, cl.current_balance 
+from credit_lines cl 
+inner join individuals i on i.account_holder_id = cl.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+inner join credit_line_statuses cls on cls.credit_line_status_id = cl.status_id 
+where cl.creditor_id = 380
+and (cl.status_id = 14 or status_id = 68)
+and cl.current_balance >= 1
+and cl.deleted is null and i.deleted is null and ah.deleted is null
+
+--standard bank with paid up status---
+select distinct(cl.account_reference_no), ah.account_number, concat(i.first_name, ' ', i.last_name) as full_name, cls.credit_line_status, cl.current_balance 
+from credit_lines cl 
+inner join individuals i on i.account_holder_id = cl.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+inner join credit_line_statuses cls on cls.credit_line_status_id = cl.status_id 
+where cl.creditor_id = 380
+and (cl.status_id = 68 )
+and cl.deleted is null and i.deleted is null and ah.deleted is null
+
+
+--National bank with with current balance without updates
+select distinct(cl.account_reference_no), ah.account_number, concat(i.first_name, ' ', i.last_name), cls.credit_line_status, cl.current_balance 
+from credit_lines cl 
+inner join individuals i on i.account_holder_id = cl.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+inner join credit_line_statuses cls on cls.credit_line_status_id = cl.status_id 
+where cl.creditor_id = 1772
+and cl.current_balance = 0
+and cl.disbursement_date between '2015-01-01' and '2019-12-31 23:23:59'
+and cl.deleted is null and i.deleted is null and ah.deleted is null
+
+select c.company_name from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null and ah.deleted  is null 
+group by c.company_name; 
+having count (c.company_name) > 1
+
+
+--irrelevant addresses
+select postal_address from account_holders ah 
+inner join individuals i on i.account_holder_id = ah.account_holder_id 
+where length(postal_address) <= 1
+and ah.deleted is null and i.deleted is null
+
+select cl.account_reference_no, i.first_name, i.last_name, ah.account_number from credit_lines cl 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+inner join individuals i on i.account_holder_id = cl.account_holder_id 
+where cl.deleted is null 
+and cl.status_id = 24
+
+select cl.account_reference_no, i.company_name , ah.account_number from credit_lines cl 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+inner join companies i on i.account_holder_id = cl.account_holder_id 
+where cl.deleted is null 
+and cl.status_id = 24
+
+/*Shared IDs*/
+SELECT c.account_number,upper(concat(replace(b.first_name,' ',''),' ',replace(b.last_name,' ',''))) as name,replace(a.id_number,' ','') as id_number from identification_documents a 
+join individuals b on a.account_holder_id=b.account_holder_id
+join account_holders c on a.account_holder_id=c.account_holder_id
+where a.deleted is null and b.deleted is null and c.deleted is null and length(trim(a.id_number))!=0
+and a.id_number = a.id_number 
+
+/*Shared IDs*/2
+select id.id_number, array_agg(distinct(ah.account_number)), array_agg(distinct(concat(i.first_name, ' ', i.last_name))) from identification_documents id
+inner join account_holders ah on ah.account_holder_id = id.account_holder_id
+inner join individuals i on i.account_holder_id = ah.account_holder_id
+where id.deleted is null and ah.deleted is null and i.deleted is null
+and id.identification_type_id = 8
+group by id.id_number
+having count(distinct(upper(concat(i.first_name, ' ', i.last_name)))) > 1;
+
+/*Shared IDs*/3
+SELECT COUNT(*) AS total_accounts_with_multiple_ids
+FROM (
+    SELECT ah.account_number
+    FROM identification_documents id
+    INNER JOIN account_holders ah ON ah.account_holder_id = id.account_holder_id
+    WHERE id.deleted IS NULL
+      AND id.identification_type_id = '8'
+    GROUP BY ah.account_number
+    HAVING COUNT(DISTINCT id.id_number) > 1
+) AS subquery;
+
+/*SHARED LIABILITIES(EXTENDED TO PYTHON)*/
+
+SELECT distinct(c.account_number),upper(concat(replace(b.first_name,' ',''),' ',replace(b.last_name,' ',''))),a.account_reference_no, a.creditor_id 
+from credit_lines a 
+inner join individuals b on a.account_holder_id=b.account_holder_id
+inner join account_holders c on a.account_holder_id=c.account_holder_id
+where (select count (inr.account_holder_id) from credit_lines inr
+where inr.account_reference_no = a.account_reference_no 
+and inr.deleted is null) > 1
+and a.deleted is null and b.deleted is null and c.deleted is null 
+and length(trim(a.account_reference_no))!=0 and a.lock_status_id=0
+
+select COUNT(*) from companies c
+where (select count (inr.account_holder_id) from companies inr
+where inr.company_name = c.company_name
+and inr.deleted is null) = 1
+and deleted is null 
+order by a.account_reference_no
+
+
+select ah.account_number, i.first_name, i.last_name from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+where i.deleted is null 
+and i.last_name = 'UNKNOWN'
+ 
+delete * from individual_suspenses 
+where status = 'NOT MERGED';
+
+
+select c.company_name, alias, count(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null and ah.deleted is null
+and c.company_name = c.alias 
+group by c.company_name, c.alias 
+having count(*) > 1;
+
+--sample ids sent for verification
+select i.first_name, i.middle_name, i.last_name, i.date_of_birth, id.id_number 
+from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+inner join identification_documents id on id.account_holder_id = i.account_holder_id 
+where i.deleted is null and ah.deleted is null and id.deleted is null 
+and id.identification_type_id = 8
+order by i.account_holder_id
+limit 50;
+
+select count(*) from credit_lines cl 
+where current_balance > 1
+and status_id = 68
+and deleted is null;
+
+--duplicated individuals
+select count(*) from individuals ou
+where (select count(*) from individuals inr
+where inr.first_name = ou.first_name and inr.last_name = ou.last_name and inr.date_of_birth = inr.date_of_birth) > 1
+
+
+select company_name, count(*) from companies c
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where (select count(inr.account_holder_id) from companies inr
+where inr.company_name = c.company_name) > 1
+and c.deleted is null and ah.deleted is null
+group by company_name 
+having count(*) > 1
+ --start time = 17:04
+
+select count(ou.account_holder_id) from individuals ou
+where deleted is null
+having count(*) > 1;
+
+--Duplicated individuals for national bank---
+select distinct(cl.account_reference_no), ah.account_number, concat(i.first_name, ' ', i.last_name) as name, cl.current_balance, *
+from credit_lines cl 
+inner join individuals i on i.account_holder_id = cl.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+where cl.creditor_id = 1772
+and cl.current_balance = 0
+and cl.disbursement_date between '2015-01-01' and '2019-12-31 23:23:59'
+and cl.deleted is null and i.deleted is null and ah.deleted is null
+
+
+--Duplicated individuals for NBS--
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,c.date_of_birth,
+    COUNT(DISTINCT ah.account_number) AS count,
+    array_agg(DISTINCT ah.account_number) AS account_numbers 
+FROM individuals c
+INNER JOIN credit_lines cl ON cl.account_holder_id = c.account_holder_id
+INNER JOIN account_holders ah ON ah.account_holder_id = cl.account_holder_id
+WHERE cl.creditor_id = 2234
+AND c.deleted IS NULL
+AND cl.deleted IS NULL
+GROUP BY c.first_name, c.last_name,c.date_of_birth 
+HAVING COUNT(*) > 1;
+
+
+---Duplicated individuals for NBS(2)---
+SELECT 
+    CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+    c.date_of_birth,
+    id.id_number,
+    COUNT(DISTINCT ah.account_number) AS count,
+    array_agg(DISTINCT ah.account_number) AS account_numbers
+FROM 
+    individuals c
+INNER JOIN 
+    credit_lines cl ON cl.account_holder_id = c.account_holder_id
+INNER JOIN 
+    account_holders ah ON ah.account_holder_id = cl.account_holder_id
+inner JOIN 
+    identification_documents id ON id.account_holder_id  = c.account_holder_id 
+WHERE 
+    cl.creditor_id = 2234
+    AND c.deleted IS NULL
+    AND cl.deleted IS NULL
+GROUP BY 
+    c.first_name, c.last_name, c.date_of_birth, id.id_number
+HAVING 
+    COUNT(*) > 1;
+
+
+
+SELECT  ah.account_number c_accountNumber, companies.company_name c_companyName,
+        companies.registration_number c_registrationNumber, companies.registration_date c_registrationDate,
+        companies.business_name c_businessName, companies.mra_tpin c_mraTpin, ah.email c_email,
+        ah.mobile c_mobile, ah.telephone c_telephone,
+        ah.postal_address c_postalAddress, ah.physical_address c_physicalAddress,
+        ah.account_holder_id c_accountHolderId, ls.id c_lockStatusId
+FROM account_holders ah
+INNER JOIN companies co ON  co.account_holder_id = ah.account_holder_id
+LEFT JOIN lock_statuses ls on ah.lock_status_id = ls.id
+WHERE lower(co.company_name) LIKE lower(:companyName)
+AND ah.deleted IS NULL
+ORDER BY (ah.account_number = :masterAccount) DESC, ah.created DESC
+LIMIT :limit
+
+
+select concat(c.first_name, c.last_name) , count(*) from individuals c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null and ah.deleted is null
+group by c.first_name, c.last_name 
+having count(concat(c.first_name, c.last_name)) > 1000
+
+
+select c.account_holder_id, c.company_name from companies c
+inner join account_holders as ah on ah.account_holder_id = c.account_holder_id
+where c.deleted is null
+and c.account_holder_id in (1,
+3,
+5,
+8,
+9,
+10,
+160);
+
+
+select COUNT(*) as TOTAL from companies c
+inner join account_holders as ah on ah.account_holder_id = c.account_holder_id
+where c.deleted is NULL;
+
+select concat(c.company_name) , count(*) from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.deleted is null and ah.deleted is null
+group by c.company_name 
+having count(c.company_name) > 50
+
+select c.company_name, ah.account_number, ah.is_verified from companies c Z\ 
+inner join account_holders as ah on ah.account_holder_id = c.account_holder_id 
+where c.company_name like 'MALAWI PORTS%'
+and c.deleted is null and ah.deleted is null;
+
+select c.company_name, count(*), ah.account_number from insurance_policies ip 
+inner join companies c on c.account_holder_id = ip.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = ip.account_holder_id
+where c.deleted is null and ah.deleted is null
+group by c.company_name, ah.account_number 
+having count(*) > 500;
+
+select c.company_name, count(*), ah.account_number from insurance_policies ip 
+inner join policy_statuses ps on ps.id = ip.policy_status_id 
+inner join companies c on c.account_holder_id = ip.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = ip.account_holder_id
+where ip.deleted is null and c.deleted is null and ah.deleted is null
+group by c.company_name, ah.account_number 
+having count(*) > 500;
+
+select deleted, * from insurance_policies ip 
+where ip.deleted is null 
+and account_holder_id = 1023923 ; 2022-05-112022-05-11 11:38:38 11:38:38
+
+select c.company_name, c.registration_number, ah.telephone, ah.mobile, ah.email from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.company_sector_id = 32
+and c.deleted is null and ah.deleted is null
+
+select first_name, last_name, cl.account_reference_no from individuals ou
+inner join credit_lines cl on cl.account_holder_id = ou.account_holder_id 
+where (select count(*) from credit_lines inr
+inner join individuals i on i.account_holder_id = inr.account_holder_id 
+where inr.account_reference_no = cl.account_reference_no and ou.first_name<>i.first_name
+and ou.last_name<>i.last_name) > 1
+and cl.creditor_id = 2234
+group by first_name, last_name, cl.account_reference_no 
+limit 100
+
+select deleted, creditor_id, * from credit_lines where credit_line_id in ( 
+    select cast(entity_id as integer) from audits where source_id like '%FCB-IND-167-20221014%' and model = 'Creditline'
+)order by creditor_id;
+
+select ou.first_name, ou.last_name, id.id_number from individuals ou
+inner join identification_documents id on id.account_holder_id = ou.account_holder_id 
+where (select count(*) from identification_documents inr
+where inr.id_number = id.id_number) > 1
+and ou.deleted is null 
+and id.deleted is null 
+order by ou.first_name, ou.last_name, id.id_number
+limit 1000
+
+select distinct(c.company_name), ah.email, ah.telephone, ah.postal_address, ah.physical_address 
+from companies c 
+inner join account_holders ah on ah.account_holder_id = c.account_holder_id 
+where c.company_sector_id = 69
+and c.deleted is null
+
+
+select concat(first_name, ' ', last_name) , count(*) from individuals i
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+where i.deleted is null and ah.deleted is null
+group by first_name, last_name 
+having count(concat(first_name, last_name)) > 5
+limit 500000
+
+
+--same reference number, different data provider
+with cte as(
+select account_reference_no from credit_lines where deleted is null and length(trim(account_reference_no))>4 
+group by account_reference_no having count(distinct(creditor_id))>1
+)
+select c.account_number,b.account_holder_id,cte.account_reference_no,b.creditor_id from credit_lines b
+join cte
+on cte.account_reference_no=b.account_reference_no
+join account_holders c 
+on c.account_holder_id=b.account_holder_id;
+
+select from credit_lines cl 
+outer join individuals i on i.account_holder_id = cl.account_holder_id 
+outer join companies c on i.account_holder_id = cl.account_holder_id 
+inner join account_holders ah on ah.account_holder_id = cl.account_holder_id 
+where cl.
+
+
+
+-- unlocking all locked std bank liabilities with zerp principle amount and valid clearance date
+select count(*) from credit_lines cl 
+where deleted is null and creditor_id = 380 and clearing_date!= '1905-01-01' 
+and principal_amount = 0 and lock_status_id = 12;
+
+UPDATE credit_lines
+set lock_status_id = 0
+where deleted is null and creditor_id = 380 
+and clearing_date!= '1905-01-01' 
+and principal_amount = 0
+and lock_status_id = 12;
+
+-- unlocking std bank liabilities with principle amount > 0 and default clearance date
+select count(*) from credit_lines cl 
+where deleted is null and creditor_id = 380 and clearing_date = '1905-01-01' 
+and principal_amount > 0 and lock_status_id = 12;
+
+UPDATE credit_lines
+set lock_status_id = 0
+where deleted is null and creditor_id = 380 
+and clearing_date = '1905-01-01' 
+and principal_amount > 0
+and lock_status_id = 12;
+
+-- std bank accounts locked with zero amount and default clearance date 
+select count(*) from credit_lines cl 
+where deleted is null and creditor_id = 380 and principal_amount < 1
+and lock_status_id = 12 and clearing_date = '1905-01-01'
+
+UPDATE credit_lines
+set lock_status_id = 11
+where deleted is null and creditor_id = 380 
+and clearing_date = '1905-01-01' 
+and principal_amount < 1
+and lock_status_id = 0;
+
+with cte as(
+select a.account_number,b.account_holder_id,b.account_reference_no from credit_lines b 
+join account_holders a on a.account_holder_id=b.account_holder_id
+where a.deleted is null and b.deleted is null and b.creditor_id=380
+)
+select count(account_holder_id) from cte where account_holder_id not in
+(select account_holder_id from credit_lines where deleted is null and lock_status_id=0 and creditor_id=380);
+
+-- Locking(setting to archived status) standard bank liabilities
+select count(*) from credit_lines cl 
+where deleted is null and creditor_id=380 
+and lock_status_id = 0 
+and principal_amount <= 0  
+and clearing_date='1905-01-01';
+
+UPDATE credit_lines
+set lock_status_id = 11
+where deleted is null and creditor_id = 380 
+and lock_status_id = 0 
+and principal_amount <= 0  
+and clearing_date='1905-01-01';
+
+
+--duplicated individuals--
+WITH CTE AS (
+  SELECT COUNT(
+    CONCAT(
+      UPPER(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                        ' ', ''
+                      ),
+                      '.', ''
+                    ),
+                    ',', ''
+                  ),
+                  '1', ''
+                ),
+                '0', ''
+              ),
+              '2', ''
+            ),
+            '9', ''
+          ),
+          '-', ''
+        )
+      ),
+      date_of_birth
+    )
+  ) AS count
+  FROM individuals
+  INNER JOIN account_holders ah ON ah.account_holder_id = individuals.account_holder_id
+  WHERE individuals.deleted IS NULL
+    AND ah.deleted IS NULL
+    AND date_of_birth != '1905-01-01'  -- Exclude default date of birth
+  GROUP BY CONCAT(
+    UPPER(
+      REPLACE(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                      ' ', ''
+                    ),
+                    '.', ''
+                  ),
+                  ',', ''
+                ),
+                '1', ''
+              ),
+              '0', ''
+            ),
+            '2', ''
+          ),
+          '9', ''
+        ),
+        '-', ''
+      )
+    ),
+    date_of_birth
+  )
+  HAVING COUNT(
+    CONCAT(
+      UPPER(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(
+                        CONCAT(first_name, last_name, sex, title),  -- Added sex here
+                        ' ', ''
+                      ),
+                      '.', ''
+                    ),
+                    ',', ''
+                  ),
+                  '1', ''
+                ),
+                '0', ''
+              ),
+              '2', ''
+            ),
+            '9', ''
+          ),
+          '-', ''
+        )
+      ),
+      date_of_birth
+    )
+  ) > 1
+)
+SELECT SUM(count) FROM CTE;
+
+
+--Improper names----
+select (c.account_reference_no), 
+i.title as salutation, i.last_name as surname, i.first_name, i.middle_name, i.maiden_name, i.sex as gender, i.marital_status, i.date_of_birth, 
+id.id_number as nationalID, it.identification_type, n.nationality, i.home_village, i.home_village_ta, d.district_name, i.residence_permit_no, 
+ah.mobile as phone_number, ah.postal_address, ah.email, ah.physical_address as residential_address, ah.physical_address_district as residential_district, 
+ah.plot_number, i.profession, eh.employer_name, eh.employer_postal_address, eh.employee_number, eh.start_date as employment_date, 
+c.account_reference_no as loan_reference_number, c.sub_account_reference_no as old_loan_reference_number, c.reporting_currency as currency, 
+c.principal_amount as aprroved_amount, c.principal_amount_local as approved_amount_MWK, c.approved_amount as disbursed_amount, 
+c.approved_amount_local as disbursement_amount_MWK, c.disbursement_date, c.clearing_date as maturity_date, c.participation_code as borrower_code, 
+c.group_name, c.group_number, pt2.payment_term, c.collateral_status, c.rbm_class, c.status_id as account_status, c.account_status_date, 
+c.monthly_repayment, c.monthly_repayment_local, c.amount_paid, c.amount_paid_local, c.current_balance, c.current_balance_local, 
+c.available_credit, c.available_credit_local, c.due_balance, c.due_balance_local, c.days_in_arrears, c.no_of_installments, c.reason_for_closure, 
+c.first_payment_date, c.last_transaction_date, c.last_transaction_amount, last_transaction_amount_local, c.created_at 
+from credit_lines c
+inner join account_holders ah on c.account_holder_id = ah.account_holder_id
+inner join individuals i on ah.account_holder_id = i.account_holder_id
+inner join account_types at on c.account_type_id = at.id
+inner join payment_terms pt on c.payment_term_id = pt.payment_term_id
+inner join credit_line_statuses cls on c.status_id = cls.credit_line_status_id
+inner join identification_documents id on id.account_holder_id = i.account_holder_id 
+inner join identification_types it on it.identification_type_id = id.identification_type_id 
+inner join nationalities n on n.nationality_id = i.nationality_id 
+inner join districts d on d.id = i.district_id 
+inner join employment_histories eh on eh.account_holder_id = i.account_holder_id 
+inner join payment_terms pt2 on pt2.payment_term_id = c.payment_term_id
+left join utilities cl on cl.account_holder_id = i.account_holder_id 
+where it.identification_type_id = 8
+and c.creditor_id = 6204
+and c.created_at < '2024-09-24'
+and (length(first_name) <= 3 or length(last_name) <= 3)
+and i.deleted is null and ah.deleted is null and c.deleted is null;
+
+
+
+
+--Improper names----
+---INDIVIDUAL TEMPLETE(WITHOUT DUPLICATES)
+SELECT 
+    c.account_reference_no, 
+    MAX(i.title) AS salutation, 
+    MAX(i.last_name) AS surname, 
+    MAX(i.first_name) AS first_name, 
+    MAX(i.middle_name) AS middle_name, 
+    MAX(i.maiden_name) AS maiden_name, 
+    MAX(i.sex) AS gender, 
+    MAX(i.marital_status) AS marital_status, 
+    MAX(i.date_of_birth) AS date_of_birth, 
+    MAX(id.id_number) AS nationalID, 
+    MAX(it.identification_type) AS identification_type,
+    MAX(n.nationality) AS nationality, 
+    MAX(i.home_village) AS home_village, 
+    MAX(i.home_village_ta) AS home_village_ta, 
+    MAX(d.district_name) AS district_name, 
+    MAX(i.residence_permit_no) AS residence_permit_no, 
+    MAX(ah.mobile) AS phone_number, 
+    MAX(ah.postal_address) AS postal_address, 
+    MAX(ah.email) AS email, 
+    MAX(ah.physical_address) AS residential_address,
+    MAX(ah.physical_address_district) AS residential_district, 
+    MAX(ah.plot_number) AS plot_number, 
+    MAX(i.profession) AS profession, 
+    MAX(eh.employer_name) AS employer_name, 
+    MAX(eh.employer_postal_address) AS employer_postal_address, 
+    MAX(eh.employee_number) AS employee_number, 
+    MAX(eh.start_date) AS employment_date,
+    MAX(c.sub_account_reference_no) AS old_loan_reference_number, 
+    MAX(c.reporting_currency) AS currency, 
+    MAX(c.principal_amount) AS approved_amount,
+    MAX(c.principal_amount_local) AS approved_amount_MWK, 
+    MAX(c.approved_amount) AS disbursed_amount, 
+    MAX(c.approved_amount_local) AS disbursement_amount_MWK, 
+    MAX(c.disbursement_date) AS disbursement_date,
+    MAX(c.clearing_date) AS maturity_date, 
+    MAX(c.participation_code) AS borrower_code, 
+    MAX(c.group_name) AS group_name, 
+    MAX(c.group_number) AS group_number, 
+    MAX(pt2.payment_term) AS payment_term, 
+    MAX(c.collateral_status) AS collateral_status, 
+    MAX(c.rbm_class) AS rbm_class,
+    MAX(c.status_id) AS account_status, 
+    MAX(c.account_status_date) AS account_status_date, 
+    MAX(c.monthly_repayment) AS monthly_repayment, 
+    MAX(c.monthly_repayment_local) AS monthly_repayment_local, 
+    MAX(c.amount_paid) AS amount_paid, 
+    MAX(c.amount_paid_local) AS amount_paid_local, 
+    MAX(c.current_balance) AS current_balance, 
+    MAX(c.current_balance_local) AS current_balance_local,
+    MAX(c.available_credit) AS available_credit, 
+    MAX(c.available_credit_local) AS available_credit_local, 
+    MAX(c.due_balance) AS due_balance, 
+    MAX(c.due_balance_local) AS due_balance_local, 
+    MAX(c.days_in_arrears) AS days_in_arrears, 
+    MAX(c.no_of_installments) AS no_of_installments, 
+    MAX(c.reason_for_closure) AS reason_for_closure, 
+    MAX(c.first_payment_date) AS first_payment_date,
+    MAX(c.last_transaction_date) AS last_transaction_date, 
+    MAX(c.last_transaction_amount) AS last_transaction_amount, 
+    MAX(c.last_transaction_amount_local) AS last_transaction_amount_local, 
+    MAX(c.created_at) AS created_at 
+FROM 
+    credit_lines c
+    INNER JOIN account_holders ah ON c.account_holder_id = ah.account_holder_id
+    INNER JOIN individuals i ON ah.account_holder_id = i.account_holder_id
+    INNER JOIN account_types at ON c.account_type_id = at.id
+    INNER JOIN payment_terms pt ON c.payment_term_id = pt.payment_term_id
+    INNER JOIN credit_line_statuses cls ON c.status_id = cls.credit_line_status_id
+    INNER JOIN identification_documents id ON id.account_holder_id = i.account_holder_id 
+    INNER JOIN identification_types it ON it.identification_type_id = id.identification_type_id 
+    INNER JOIN nationalities n ON n.nationality_id = i.nationality_id 
+    INNER JOIN districts d ON d.id = i.district_id 
+    INNER JOIN employment_histories eh ON eh.account_holder_id = i.account_holder_id 
+    INNER JOIN payment_terms pt2 ON pt2.payment_term_id = c.payment_term_id 
+WHERE it.identification_type_id = 8
+    AND c.creditor_id = 1337
+    and (length(first_name) <= 3 or length(last_name) <= 3)
+    or i.last_name = 'UNKNOWN'
+    or i.first_name = 'UNKNOWN'
+    or i.first_name in ('0', 'N/A', 'UNKNOWN', '-', 'NULL', 'NA','@','%','') 
+    or i.last_name in ('0', 'N/A', 'UNKNOWN', '-', 'NULL', 'NA','@','%','')  
+    AND i.deleted IS NULL 
+    AND ah.deleted IS NULL 
+    AND c.deleted IS NULL
+GROUP BY 
+    c.account_reference_no;
