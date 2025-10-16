@@ -1,0 +1,56 @@
+---FOR MICROFINANCE---
+select cl.account_reference_no, array_agg(distinct(ah.account_number))
+from account_holders ah
+inner join credit_lines cl on cl.account_holder_id = ah.account_holder_id
+where ah.deleted is null
+    and cl.lock_status_id = 0
+    and cl.creditor_id in (2234)
+    and cl.deleted is null
+group by  cl.account_reference_no
+having count(cl.account_reference_no) > 1;
+
+---FOR INSURANCES---
+select i.policy_number , array_agg(distinct(ah.account_number))
+from account_holders ah
+inner join insurance_policies i  on i.account_holder_id = ah.account_holder_id
+where ah.deleted is null
+    and i.lock_status_id = 0
+    and i.insurer_id  in (598712)
+    and i.deleted is null
+group by  i.policy_number 
+having count(i.policy_number) > 1;
+
+
+--- FOR UTILITIES---
+select u.reference_number, array_agg(distinct(ah.account_number))
+from account_holders ah
+inner join utilities u   on u.account_holder_id = ah.account_holder_id
+where ah.deleted is null
+    and u.lock_status_id = 0
+    and u.utility_provider_id  in (196378)
+    and u.deleted is null
+group by  u.reference_number 
+having count(u.reference_number ) > 1;
+
+---FOR ALL---
+select i.first_name, i.last_name, i.date_of_birth, count(*), array_agg(ah.account_number) from individuals i 
+inner join account_holders ah on ah.account_holder_id = i.account_holder_id 
+where ah.deleted is null and i.deleted is null
+group by i.first_name, i.last_name, i.date_of_birth 
+having count(concat(i.first_name, i.last_name)) > 1
+limit 1000000;
+
+
+----FOR MUDI--
+update credit_lines c 
+set status_id = 68, 
+current_balance = 0,
+due_balance = 0,
+days_in_arrears = 0,
+installments_in_arrears = 0,
+due_balance_local= 0,
+current_balance_local = 0
+where c.creditor_id = 5650
+and c.lock_status_id = 0
+and c.deleted is null 
+and c.account_reference_no  ='00125018';
