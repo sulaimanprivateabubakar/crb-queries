@@ -1,0 +1,26 @@
+----credit_lines deletions---
+SELECT 
+    distinct ah.account_number,
+    COALESCE(cl.account_reference_no, ip.policy_number) AS reference_number,
+    dr.reason,
+    u_requester.fullname AS requester,
+    u_action.fullname AS approved,
+    dr.created,
+    cls.credit_line_status
+FROM 
+    credit_lines cl
+INNER JOIN 
+    delete_requests dr ON dr.account_holder_id = cl.account_holder_id
+INNER JOIN 
+    insurance_policies ip ON ip.account_holder_id = dr.account_holder_id
+INNER JOIN 
+    account_holders ah ON ah.account_holder_id = dr.account_holder_id
+INNER JOIN 
+    credit_line_statuses cls ON cls.credit_line_status_id = cl.status_id
+LEFT JOIN 
+    users u_requester ON u_requester.id = dr.requested_by
+LEFT JOIN 
+    users u_action ON u_action.id = dr.action_by
+WHERE 
+    u_action.department = 'CHECKING'
+    AND dr.created BETWEEN '2025-09-01' AND '2025-09-30';
